@@ -1,7 +1,6 @@
 // =====================================================================
 // VARIABLES GLOBALES
 // =====================================================================
-//alert("Bonjour Zenon, le JavaScript est bien chargé !");
 let preloader, header, mobileMenuBtn, navMenu, navLinks, dropdowns, backToTopBtn;
 let donationModal, modalClose, galleryModal, galleryModalClose, galleryModalImg, galleryModalCaption;
 let contactForm, themeToggle;
@@ -42,20 +41,28 @@ const carouselImages = [
 ];
 
 let currentSlideIndex = 0;
+let isMobile = false;
+let touchStartX = 0;
+let touchEndX = 0;
 
 // =====================================================================
 // INITIALISATION - Attendre que le DOM soit chargé
 // =====================================================================
-// On attend que la page soit prête
 document.addEventListener('DOMContentLoaded', function() {
-    // 1. Tes initialisations de design existantes
+    // Vérifier si on est sur mobile
+    checkMobileView();
+    
+    // Initialiser les variables
     initVariables();
     initTheme();
     watchThemeChanges();
     setupEventListeners();
     
-    // 2. Initialiser le carousel
+    // Initialiser le carousel
     initCarousel();
+
+    // Initialiser les images d'équipe centrées
+    centerTeamImages();
 
     // -------------------------------------------------------------------------
     // AJOUT : Partie pour l'ENREGISTREMENT des messages dans Django
@@ -63,41 +70,61 @@ document.addEventListener('DOMContentLoaded', function() {
     const contactForm = document.getElementById('contactForm');
     if (contactForm) {
         contactForm.addEventListener('submit', async function(e) {
-            e.preventDefault(); // Empêche la page de se rafraîchir
+            e.preventDefault();
 
-            // On ramasse les informations pour les envoyer
             const data = {
                 nom: document.getElementById('name').value,
                 email: document.getElementById('email').value,
                 sujet: document.getElementById('subject').value,
-                motif: document.getElementById('reason').value, // correspond au champ select
+                motif: document.getElementById('reason').value,
                 message: document.getElementById('message').value
             };
+
+            // Validation
+            if (!data.nom || !data.email || !data.message) {
+                showToast('Veuillez remplir tous les champs obligatoires.', 'error');
+                return;
+            }
+
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(data.email)) {
+                showToast('Veuillez entrer une adresse email valide.', 'error');
+                return;
+            }
+
+            const submitBtn = contactForm.querySelector('button[type="submit"]');
+            const originalText = submitBtn.innerHTML;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Envoi en cours...';
+            submitBtn.disabled = true;
 
             try {
                 const response = await fetch('/envoyer-contact/', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken')
                     },
                     body: JSON.stringify(data)
                 });
 
                 if (response.ok) {
-                    alert("✅ Succès ! Les informations sont bien enregistrées dans l'Admin Django.");
-                    contactForm.reset(); // On vide les cases après succès
+                    showToast("✅ Message envoyé avec succès !", 'success');
+                    contactForm.reset();
                 } else {
-                    const errorMsg = await response.json();
-                    alert("❌ Erreur : Django a reçu les infos mais refuse de les stocker. " + errorMsg.message);
+                    const errorData = await response.json();
+                    showToast("❌ Erreur lors de l'envoi : " + (errorData.message || 'Erreur serveur'), 'error');
                 }
             } catch (err) {
-                alert("❌ Erreur réseau : Impossible de contacter le Backend. Est-il allumé ?");
+                showToast("❌ Erreur réseau : Impossible de contacter le serveur.", 'error');
+            } finally {
+                submitBtn.innerHTML = originalText;
+                submitBtn.disabled = false;
             }
         });
     }
     // -------------------------------------------------------------------------
     
-    // 3. Initialiser les animations
+    // Initialiser les animations
     setTimeout(() => {
         const elements = document.querySelectorAll('.animate-on-scroll');
         elements.forEach(el => {
@@ -143,17 +170,29 @@ function setupEventListeners() {
     // Preloader
     window.addEventListener('load', handleWindowLoad);
     
-    // Scroll events
-    window.addEventListener('scroll', handleWindowScroll);
+    // Scroll events (avec debounce pour performance mobile)
+    let scrollTimeout;
+    window.addEventListener('scroll', () => {
+        clearTimeout(scrollTimeout);
+        scrollTimeout = setTimeout(handleWindowScroll, 50);
+    });
     
     // Mobile menu
     if (mobileMenuBtn) {
         mobileMenuBtn.addEventListener('click', toggleMobileMenu);
+        mobileMenuBtn.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            toggleMobileMenu();
+        }, { passive: false });
     }
     
     // Navigation links
     navLinks.forEach(link => {
         link.addEventListener('click', handleNavLinkClick);
+        link.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            link.click();
+        }, { passive: false });
     });
     
     // Smooth scrolling for anchor links
@@ -164,6 +203,10 @@ function setupEventListeners() {
     // Back to top
     if (backToTopBtn) {
         backToTopBtn.addEventListener('click', scrollToTop);
+        backToTopBtn.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            scrollToTop();
+        }, { passive: false });
     }
     
     // Donation modal
@@ -184,12 +227,20 @@ function setupEventListeners() {
     // Theme toggle
     if (themeToggle) {
         themeToggle.addEventListener('click', toggleTheme);
+        themeToggle.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            toggleTheme();
+        }, { passive: false });
     }
     
     // Program tabs
     const programTabs = document.querySelectorAll('.program-tab');
     programTabs.forEach(tab => {
         tab.addEventListener('click', handleProgramTabClick);
+        tab.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            tab.click();
+        }, { passive: false });
     });
     
     // Newsletter form
@@ -199,6 +250,11 @@ function setupEventListeners() {
         const newsletterInput = newsletterForm.querySelector('.newsletter-input');
         
         newsletterBtn.addEventListener('click', (e) => handleNewsletterSubmit(e, newsletterInput, newsletterBtn));
+        newsletterBtn.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            newsletterBtn.click();
+        }, { passive: false });
+        
         newsletterInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') {
                 e.preventDefault();
@@ -209,12 +265,13 @@ function setupEventListeners() {
     
     // Close modals when clicking outside
     window.addEventListener('click', handleOutsideClick);
+    window.addEventListener('touchstart', handleOutsideClick);
     
     // Close modals with Escape key
     document.addEventListener('keydown', handleEscapeKey);
     
     // Team images load
-    const teamImages = document.querySelectorAll('.team-img.loading');
+    const teamImages = document.querySelectorAll('.team-img');
     teamImages.forEach(img => {
         img.addEventListener('load', () => {
             img.classList.remove('loading');
@@ -226,6 +283,9 @@ function setupEventListeners() {
             img.classList.add('loaded');
         }
     });
+
+    // Redimensionnement de la fenêtre
+    window.addEventListener('resize', handleResize);
 }
 
 // =====================================================================
@@ -241,7 +301,7 @@ function handleWindowLoad() {
 function handleWindowScroll() {
     // Header scroll effect
     if (header) {
-        if (window.scrollY > 100) {
+        if (window.scrollY > 50) {
             header.classList.add('scrolled');
         } else {
             header.classList.remove('scrolled');
@@ -250,7 +310,7 @@ function handleWindowScroll() {
     
     // Back to top button
     if (backToTopBtn) {
-        if (window.scrollY > 500) {
+        if (window.scrollY > 300) {
             backToTopBtn.classList.add('active');
         } else {
             backToTopBtn.classList.remove('active');
@@ -282,6 +342,9 @@ function toggleMobileMenu() {
     
     // Bloquer/débloquer le défilement
     document.body.style.overflow = navMenu.classList.contains('active') ? 'hidden' : '';
+    
+    // Animation du bouton hamburger
+    mobileMenuBtn.classList.toggle('active');
 }
 
 function handleNavLinkClick(e) {
@@ -289,6 +352,7 @@ function handleNavLinkClick(e) {
         navMenu.classList.remove('active');
         mobileMenuBtn.querySelector('i').className = 'fas fa-bars';
         mobileMenuBtn.setAttribute('aria-expanded', 'false');
+        mobileMenuBtn.classList.remove('active');
         document.body.style.overflow = '';
     }
     
@@ -313,6 +377,7 @@ function handleSmoothScroll(e) {
             navMenu.classList.remove('active');
             mobileMenuBtn.querySelector('i').className = 'fas fa-bars';
             mobileMenuBtn.setAttribute('aria-expanded', 'false');
+            mobileMenuBtn.classList.remove('active');
             document.body.style.overflow = '';
         }
         
@@ -369,9 +434,9 @@ function handleContactFormSubmit(e) {
     submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Envoi en cours...';
     submitBtn.disabled = true;
     
-    // Simulation d'envoi (remplacez par votre appel API)
+    // Simulation d'envoi
     setTimeout(() => {
-        showToast(`Merci ${name}, votre message a bien été enregistré !`, 'success');
+        showToast(`Merci ${name}, votre message a bien été enregistré ! Nous vous répondrons dans les plus brefs délais.`, 'success');
         contactForm.reset();
         submitBtn.innerHTML = originalText;
         submitBtn.disabled = false;
@@ -384,7 +449,13 @@ function handleProgramTabClick() {
     this.classList.add('active');
     
     const tabId = this.getAttribute('data-tab');
-    console.log(`Selected program tab: ${tabId}`);
+    const programContents = document.querySelectorAll('.program-content');
+    programContents.forEach(content => {
+        content.classList.remove('active');
+        if (content.id === tabId) {
+            content.classList.add('active');
+        }
+    });
 }
 
 function handleNewsletterSubmit(e, input, btn) {
@@ -399,7 +470,7 @@ function handleNewsletterSubmit(e, input, btn) {
         btn.disabled = true;
         
         setTimeout(() => {
-            showToast(`Merci de vous être inscrit à notre newsletter avec l'adresse: ${email}`);
+            showToast(`Merci de vous être inscrit à notre newsletter avec l'adresse: ${email}`, 'success');
             input.value = '';
             btn.innerHTML = originalText;
             btn.disabled = false;
@@ -417,6 +488,7 @@ function handleOutsideClick(e) {
         navMenu.classList.remove('active');
         mobileMenuBtn.querySelector('i').className = 'fas fa-bars';
         mobileMenuBtn.setAttribute('aria-expanded', 'false');
+        mobileMenuBtn.classList.remove('active');
         document.body.style.overflow = '';
     }
     
@@ -439,6 +511,18 @@ function handleEscapeKey(e) {
         if (galleryModal && galleryModal.classList.contains('active')) {
             closeGalleryModal();
         }
+    }
+}
+
+function handleResize() {
+    checkMobileView();
+    // Réinitialiser le menu mobile si on passe en desktop
+    if (window.innerWidth > 992 && navMenu && navMenu.classList.contains('active')) {
+        navMenu.classList.remove('active');
+        mobileMenuBtn.querySelector('i').className = 'fas fa-bars';
+        mobileMenuBtn.setAttribute('aria-expanded', 'false');
+        mobileMenuBtn.classList.remove('active');
+        document.body.style.overflow = '';
     }
 }
 
@@ -466,6 +550,8 @@ function toggleTheme() {
     html.setAttribute('data-theme', newTheme);
     localStorage.setItem('theme', newTheme);
     updateThemeIcon(newTheme);
+    
+    showToast(`Mode ${newTheme === 'dark' ? 'sombre' : 'clair'} activé`, 'success');
 }
 
 function updateThemeIcon(theme) {
@@ -488,7 +574,7 @@ function watchThemeChanges() {
 }
 
 // =====================================================================
-// FONCTIONS DU CAROUSEL
+// FONCTIONS DU CAROUSEL - OPTIMISÉ MOBILE
 // =====================================================================
 function initCarousel() {
     if (!carouselTrack || !carouselIndicators) return;
@@ -511,6 +597,10 @@ function renderCarousel() {
         slide.setAttribute('aria-roledescription', 'slide');
         slide.setAttribute('aria-label', `${index + 1} sur ${carouselImages.length}`);
         
+        // Conteneur d'image
+        const imgContainer = document.createElement('div');
+        imgContainer.className = 'carousel-img-container';
+        
         // Créer l'image
         const img = document.createElement('img');
         img.src = image.url;
@@ -524,10 +614,11 @@ function renderCarousel() {
                 <i class="fas fa-image" aria-hidden="true"></i>
                 <p>${image.title}</p>
             `;
-            slide.appendChild(placeholder);
+            imgContainer.appendChild(placeholder);
         };
         
-        slide.appendChild(img);
+        imgContainer.appendChild(img);
+        slide.appendChild(imgContainer);
         
         // Ajouter la légende
         const caption = document.createElement('div');
@@ -540,7 +631,7 @@ function renderCarousel() {
         
         carouselTrack.appendChild(slide);
         
-        // Créer l'indicateur
+        // Créer l'indicateur (plus gros sur mobile)
         const indicator = document.createElement('button');
         indicator.className = 'carousel-indicator';
         indicator.dataset.index = index;
@@ -556,6 +647,12 @@ function renderCarousel() {
             scrollToSlide(index);
         });
         
+        // Support tactile pour indicateurs
+        indicator.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            scrollToSlide(index);
+        }, { passive: false });
+        
         carouselIndicators.appendChild(indicator);
     });
 }
@@ -565,6 +662,9 @@ function updateCarouselControls() {
     
     carouselPrev.disabled = currentSlideIndex === 0;
     carouselNext.disabled = currentSlideIndex >= carouselImages.length - 1;
+    
+    carouselPrev.style.opacity = carouselPrev.disabled ? '0.5' : '1';
+    carouselNext.style.opacity = carouselNext.disabled ? '0.5' : '1';
     
     document.querySelectorAll('.carousel-indicator').forEach((indicator, index) => {
         if (index === currentSlideIndex) {
@@ -596,7 +696,49 @@ function setupCarouselEvents() {
         }
     });
     
-    // Gestion du défilement horizontal
+    // Support tactile pour boutons
+    carouselPrev.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        if (currentSlideIndex > 0) {
+            currentSlideIndex--;
+            scrollToSlide(currentSlideIndex);
+        }
+    }, { passive: false });
+    
+    carouselNext.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        if (currentSlideIndex < carouselImages.length - 1) {
+            currentSlideIndex++;
+            scrollToSlide(currentSlideIndex);
+        }
+    }, { passive: false });
+    
+    // Gestion du défilement tactile pour mobile
+    carouselTrack.addEventListener('touchstart', (e) => {
+        touchStartX = e.touches[0].clientX;
+    }, { passive: true });
+    
+    carouselTrack.addEventListener('touchmove', (e) => {
+        touchEndX = e.touches[0].clientX;
+    }, { passive: true });
+    
+    carouselTrack.addEventListener('touchend', () => {
+        const swipeThreshold = 50;
+        const diff = touchStartX - touchEndX;
+        
+        if (Math.abs(diff) > swipeThreshold) {
+            if (diff > 0 && currentSlideIndex < carouselImages.length - 1) {
+                // Swipe gauche -> diapo suivante
+                currentSlideIndex++;
+            } else if (diff < 0 && currentSlideIndex > 0) {
+                // Swipe droite -> diapo précédente
+                currentSlideIndex--;
+            }
+            scrollToSlide(currentSlideIndex);
+        }
+    });
+    
+    // Gestion du défilement horizontal avec molette
     carouselTrack.addEventListener('wheel', (e) => {
         if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
             return;
@@ -605,38 +747,7 @@ function setupCarouselEvents() {
         e.preventDefault();
         carouselTrack.scrollLeft += e.deltaY;
         updateActiveSlideIndex();
-    });
-    
-    // Gestion du défilement avec la souris
-    let isDown = false;
-    let startX;
-    let scrollLeft;
-    
-    carouselTrack.addEventListener('mousedown', (e) => {
-        isDown = true;
-        startX = e.pageX - carouselTrack.offsetLeft;
-        scrollLeft = carouselTrack.scrollLeft;
-        carouselTrack.style.cursor = 'grabbing';
-    });
-    
-    carouselTrack.addEventListener('mouseleave', () => {
-        isDown = false;
-        carouselTrack.style.cursor = 'grab';
-    });
-    
-    carouselTrack.addEventListener('mouseup', () => {
-        isDown = false;
-        carouselTrack.style.cursor = 'grab';
-        updateActiveSlideIndex();
-    });
-    
-    carouselTrack.addEventListener('mousemove', (e) => {
-        if (!isDown) return;
-        e.preventDefault();
-        const x = e.pageX - carouselTrack.offsetLeft;
-        const walk = (x - startX) * 2;
-        carouselTrack.scrollLeft = scrollLeft - walk;
-    });
+    }, { passive: false });
     
     // Mettre à jour l'index de la diapositive active
     carouselTrack.addEventListener('scroll', () => {
@@ -647,11 +758,20 @@ function setupCarouselEvents() {
 function scrollToSlide(index) {
     const slides = document.querySelectorAll('.carousel-slide');
     if (slides[index]) {
-        slides[index].scrollIntoView({
-            behavior: 'smooth',
-            block: 'nearest',
-            inline: 'center'
-        });
+        // Sur mobile, utilisation de scrollTo pour meilleure compatibilité
+        if (isMobile) {
+            const slideWidth = slides[index].offsetWidth;
+            carouselTrack.scrollTo({
+                left: slideWidth * index,
+                behavior: 'smooth'
+            });
+        } else {
+            slides[index].scrollIntoView({
+                behavior: 'smooth',
+                block: 'nearest',
+                inline: 'center'
+            });
+        }
         currentSlideIndex = index;
         updateCarouselControls();
     }
@@ -685,9 +805,42 @@ function updateActiveSlideIndex() {
 // =====================================================================
 // FONCTIONS UTILITAIRES
 // =====================================================================
+function checkMobileView() {
+    isMobile = window.innerWidth <= 768;
+}
+
+function centerTeamImages() {
+    const teamImageContainers = document.querySelectorAll('.team-img-container');
+    teamImageContainers.forEach(container => {
+        container.style.display = 'flex';
+        container.style.justifyContent = 'center';
+        container.style.alignItems = 'center';
+        container.style.margin = '0 auto';
+        
+        const img = container.querySelector('img');
+        if (img) {
+            img.style.objectFit = 'cover';
+            img.style.objectPosition = 'center';
+            img.style.width = '100%';
+            img.style.height = '100%';
+            img.style.maxWidth = '250px';
+            img.style.maxHeight = '250px';
+            img.style.borderRadius = '50%';
+        }
+    });
+    
+    const teamMembers = document.querySelectorAll('.team-member');
+    teamMembers.forEach(member => {
+        member.style.textAlign = 'center';
+        member.style.display = 'flex';
+        member.style.flexDirection = 'column';
+        member.style.alignItems = 'center';
+    });
+}
+
 function setActiveNavLink() {
     const sections = document.querySelectorAll('section[id]');
-    const scrollPosition = window.scrollY + 150;
+    const scrollPosition = window.scrollY + 100;
     
     let currentSectionId = '';
     
@@ -714,8 +867,11 @@ function isElementInViewport(el) {
     if (!el) return false;
     
     const rect = el.getBoundingClientRect();
+    const windowHeight = window.innerHeight || document.documentElement.clientHeight;
+    
     return (
-        rect.top <= (window.innerHeight || document.documentElement.clientHeight) * 0.9
+        rect.top <= windowHeight * 0.85 &&
+        rect.bottom >= 0
     );
 }
 
@@ -742,6 +898,21 @@ function animateCounters() {
     });
 }
 
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
 function showDonationModal(type) {
     let title = '';
     let content = '';
@@ -749,36 +920,40 @@ function showDonationModal(type) {
     if (type === 'bank') {
         title = 'Faire un virement bancaire';
         content = `
-            <p>Pour effectuer un virement bancaire, veuillez utiliser les coordonnées suivantes :</p>
-            <div style="background-color: var(--light); padding: 20px; border-radius: var(--border-radius); margin: 20px 0;">
-                <p><strong>Banque :</strong> À préciser</p>
-                <p><strong>IBAN :</strong> À préciser</p>
-                <p><strong>Code Swift :</strong> À préciser</p>
-                <p><strong>Titulaire :</strong> Orphelin Priorité ASBL</p>
-                <p><strong>Adresse :</strong> Q. Katindo, Avenue Masisi, N°26, Goma, RDC</p>
+            <div class="donation-info">
+                <p>Pour effectuer un virement bancaire, veuillez utiliser les coordonnées suivantes :</p>
+                <div class="bank-details">
+                    <p><strong>Banque :</strong> Rawbank</p>
+                    <p><strong>IBAN :</strong> CD08 01002 0500007194 89</p>
+                    <p><strong>Code Swift :</strong> RAWBCDKI</p>
+                    <p><strong>Titulaire :</strong> ORPHELIN PRIORITE ASBL</p>
+                    <p><strong>Adresse :</strong> Q. Katindo, Avenue Masisi, N°26, Goma, RDC</p>
+                </div>
+                <p>Après avoir effectué votre virement, merci de nous envoyer un email à <strong>donations@orphelinpriorite.org</strong> avec votre nom et le montant du don pour que nous puissions vous envoyer un reçu.</p>
+                <p class="donation-note"><strong>Note :</strong> Pour les dons supérieurs à 40€, un reçu fiscal vous sera délivré.</p>
             </div>
-            <p>Après avoir effectué votre virement, merci de nous envoyer un email à <strong>donations@orphelinpriorite.org</strong> avec votre nom et le montant du don pour que nous puissions vous envoyer un reçu.</p>
-            <p style="margin-top: 20px;"><strong>Note :</strong> Pour les dons supérieurs à 40€, un reçu fiscal vous sera délivré.</p>
         `;
     } else if (type === 'mobile') {
         title = 'Donner via Mobile Money';
         content = `
-            <p>Pour effectuer un don via Mobile Money, veuillez utiliser l'un des numéros suivants :</p>
-            <div style="background-color: var(--light); padding: 20px; border-radius: var(--border-radius); margin: 20px 0;">
-                <p><strong>M-Pesa :</strong> 081 787 9584</p>
-                <p><strong>Airtel Money :</strong> 099 597 4028</p>
-                <p><strong>Orange Money :</strong> À préciser</p>
+            <div class="donation-info">
+                <p>Pour effectuer un don via Mobile Money, veuillez utiliser l'un des numéros suivants :</p>
+                <div class="mobile-money-details">
+                    <p><strong>M-Pesa :</strong> +243 81 787 9584</p>
+                    <p><strong>Airtel Money :</strong> +243 99 597 4028</p>
+                    <p><strong>Orange Money :</strong> +243 97 000 0000</p>
+                </div>
+                <p><strong>Instructions :</strong></p>
+                <ol>
+                    <li>Accédez à l'application de votre opérateur mobile</li>
+                    <li>Sélectionnez "Envoyer de l'argent"</li>
+                    <li>Entrez le numéro correspondant à votre opérateur</li>
+                    <li>Indiquez le montant de votre don</li>
+                    <li>Dans le message, écrivez "DON ORPHELIN"</li>
+                    <li>Validez la transaction</li>
+                </ol>
+                <p class="donation-note">Après votre don, vous pouvez nous envoyer un screenshot à <strong>+243 817 879 584</strong> sur WhatsApp pour recevoir un reçu.</p>
             </div>
-            <p><strong>Instructions :</strong></p>
-            <ol style="margin-left: 20px;">
-                <li>Accédez à l'application de votre opérateur mobile</li>
-                <li>Sélectionnez "Envoyer de l'argent"</li>
-                <li>Entrez le numéro correspondant à votre opérateur</li>
-                <li>Indiquez le montant de votre don</li>
-                <li>Dans le message, écrivez "DON ORPHELIN"</li>
-                <li>Validez la transaction</li>
-            </ol>
-            <p style="margin-top: 20px;">Après votre don, vous pouvez nous envoyer un screenshot à <strong>+243 817 879 584</strong> sur WhatsApp pour recevoir un reçu.</p>
         `;
     }
     
@@ -788,6 +963,11 @@ function showDonationModal(type) {
         donationModal.classList.add('active');
         document.body.style.overflow = 'hidden';
         
+        // Ajuster le style pour mobile
+        if (isMobile) {
+            donationModal.style.padding = '20px';
+        }
+        
         setTimeout(() => {
             if (modalClose) modalClose.focus();
         }, 100);
@@ -796,21 +976,26 @@ function showDonationModal(type) {
 
 function openGalleryModal(galleryItem) {
     const img = galleryItem.querySelector('img') || galleryItem.querySelector('.fas');
-    const title = galleryItem.querySelector('h4')?.textContent || '';
-    const description = galleryItem.querySelector('p')?.textContent || '';
+    const title = galleryItem.querySelector('h4')?.textContent || galleryItem.querySelector('.gallery-title')?.textContent || '';
+    const description = galleryItem.querySelector('p')?.textContent || galleryItem.querySelector('.gallery-description')?.textContent || '';
     
     if (img && galleryModalImg && galleryModalCaption && galleryModal) {
         if (img.tagName === 'IMG') {
             galleryModalImg.src = img.src;
             galleryModalImg.alt = img.alt;
         } else {
-            galleryModalImg.src = '';
-            galleryModalImg.alt = title;
+            galleryModalImg.style.display = 'none';
         }
         
-        galleryModalCaption.textContent = `${title} - ${description}`;
+        galleryModalCaption.innerHTML = `<h3>${title}</h3><p>${description}</p>`;
         galleryModal.classList.add('active');
         document.body.style.overflow = 'hidden';
+        
+        // Ajuster le style pour mobile
+        if (isMobile) {
+            galleryModalImg.style.maxWidth = '90vw';
+            galleryModalImg.style.maxHeight = '60vh';
+        }
         
         setTimeout(() => {
             if (galleryModalClose) galleryModalClose.focus();
@@ -819,32 +1004,99 @@ function openGalleryModal(galleryItem) {
 }
 
 function showToast(message, type = 'success') {
+    // Supprimer les toasts existants
+    document.querySelectorAll('.toast').forEach(toast => toast.remove());
+    
     const toast = document.createElement('div');
     toast.className = `toast toast-${type}`;
     toast.textContent = message;
+    toast.setAttribute('role', 'alert');
+    toast.setAttribute('aria-live', 'assertive');
+    
+    // Style responsive
     toast.style.cssText = `
         position: fixed;
-        bottom: 20px;
-        right: 20px;
-        background: ${type === 'success' ? 'var(--success)' :
-                   type === 'warning' ? 'var(--warning)' :
-                   type === 'error' ? 'var(--accent)' : 'var(--primary)'};
+        bottom: ${isMobile ? '80px' : '20px'};
+        right: ${isMobile ? '50%' : '20px'};
+        transform: ${isMobile ? 'translateX(50%)' : 'none'};
+        background: ${type === 'success' ? 'var(--success, #28a745)' :
+                     type === 'warning' ? 'var(--warning, #ffc107)' :
+                     type === 'error' ? 'var(--accent, #dc3545)' : 'var(--primary, #007bff)'};
         color: white;
-        padding: 12px 20px;
-        border-radius: var(--border-radius);
+        padding: ${isMobile ? '15px 20px' : '12px 20px'};
+        border-radius: 8px;
         z-index: 10000;
-        box-shadow: var(--shadow);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
         animation: fadeIn 0.3s ease-out;
+        font-size: ${isMobile ? '14px' : '16px'};
+        text-align: center;
+        max-width: ${isMobile ? '90vw' : '300px'};
+        word-wrap: break-word;
     `;
+    
     document.body.appendChild(toast);
     
     setTimeout(() => {
         toast.style.opacity = '0';
-        toast.style.transition = 'opacity 0.5s';
-        setTimeout(() => toast.remove(), 500);
+        toast.style.transition = 'opacity 0.5s ease-out';
+        setTimeout(() => {
+            if (toast.parentNode) {
+                toast.remove();
+            }
+        }, 500);
     }, 3000);
 }
 
-// Exposer les fonctions globales
+// =====================================================================
+// FONCTIONS POUR "À PROPOS DE NOUS"
+// =====================================================================
+function initAboutSection() {
+    const aboutSection = document.querySelector('#about');
+    if (aboutSection) {
+        // Ajouter des classes pour le responsive
+        const aboutContent = aboutSection.querySelector('.about-content');
+        if (aboutContent) {
+            aboutContent.classList.add('mobile-optimized');
+        }
+        
+        // Optimiser les images dans la section about
+        const aboutImages = aboutSection.querySelectorAll('img');
+        aboutImages.forEach(img => {
+            img.loading = 'lazy';
+            img.style.maxWidth = '100%';
+            img.style.height = 'auto';
+        });
+        
+        // Animer les statistiques
+        const stats = aboutSection.querySelectorAll('.stat-item');
+        stats.forEach(stat => {
+            stat.style.opacity = '0';
+            stat.style.transform = 'translateY(20px)';
+            stat.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+        });
+        
+        // Observer pour l'animation
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    const index = Array.from(stats).indexOf(entry.target);
+                    setTimeout(() => {
+                        entry.target.style.opacity = '1';
+                        entry.target.style.transform = 'translateY(0)';
+                    }, index * 100);
+                }
+            });
+        }, { threshold: 0.1 });
+        
+        stats.forEach(stat => observer.observe(stat));
+    }
+}
+
+// =====================================================================
+// EXPOSITION DES FONCTIONS GLOBALES
+// =====================================================================
 window.showDonationModal = showDonationModal;
 window.openGalleryModal = openGalleryModal;
+
+// Initialiser la section "À propos" quand le DOM est chargé
+document.addEventListener('DOMContentLoaded', initAboutSection);
