@@ -72,9 +72,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Initialiser les carousels
     initCarousel();
     initAboutCarousel();
-
-    // Initialiser les images d'équipe centrées
-    centerTeamImages();
+    initTeamImages();
 
     // Initialiser la section "À propos de nous"
     initAboutSection();
@@ -82,66 +80,9 @@ document.addEventListener('DOMContentLoaded', function() {
     // Initialiser la section "Notre impact"
     initImpactSection();
 
-    // -------------------------------------------------------------------------
-    // AJOUT : Partie pour l'ENREGISTREMENT des messages dans Django
-    // -------------------------------------------------------------------------
-    const contactForm = document.getElementById('contactForm');
-    if (contactForm) {
-        contactForm.addEventListener('submit', async function(e) {
-            e.preventDefault();
+    // Initialiser les formulaires
+    initForms();
 
-            const data = {
-                nom: document.getElementById('name').value,
-                email: document.getElementById('email').value,
-                sujet: document.getElementById('subject').value,
-                motif: document.getElementById('reason').value,
-                message: document.getElementById('message').value
-            };
-
-            // Validation
-            if (!data.nom || !data.email || !data.message) {
-                showToast('Veuillez remplir tous les champs obligatoires.', 'error');
-                return;
-            }
-
-            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-            if (!emailRegex.test(data.email)) {
-                showToast('Veuillez entrer une adresse email valide.', 'error');
-                return;
-            }
-
-            const submitBtn = contactForm.querySelector('button[type="submit"]');
-            const originalText = submitBtn.innerHTML;
-            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Envoi en cours...';
-            submitBtn.disabled = true;
-
-            try {
-                const response = await fetch('/envoyer-contact/', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': getCookie('csrftoken')
-                    },
-                    body: JSON.stringify(data)
-                });
-
-                if (response.ok) {
-                    showToast("✅ Message envoyé avec succès !", 'success');
-                    contactForm.reset();
-                } else {
-                    const errorData = await response.json();
-                    showToast("❌ Erreur lors de l'envoi : " + (errorData.message || 'Erreur serveur'), 'error');
-                }
-            } catch (err) {
-                showToast("❌ Erreur réseau : Impossible de contacter le serveur.", 'error');
-            } finally {
-                submitBtn.innerHTML = originalText;
-                submitBtn.disabled = false;
-            }
-        });
-    }
-    // -------------------------------------------------------------------------
-    
     // Initialiser les animations
     setTimeout(() => {
         const elements = document.querySelectorAll('.animate-on-scroll');
@@ -239,11 +180,6 @@ function setupEventListeners() {
         galleryModalClose.addEventListener('click', closeGalleryModal);
     }
     
-    // Contact form
-    if (contactForm) {
-        contactForm.addEventListener('submit', handleContactFormSubmit);
-    }
-    
     // Theme toggle
     if (themeToggle) {
         themeToggle.addEventListener('click', toggleTheme);
@@ -290,28 +226,11 @@ function setupEventListeners() {
     // Close modals with Escape key
     document.addEventListener('keydown', handleEscapeKey);
     
-    // Team images load
-    const teamImages = document.querySelectorAll('.team-img');
-    teamImages.forEach(img => {
-        img.addEventListener('load', () => {
-            img.classList.remove('loading');
-            img.classList.add('loaded');
-        });
-        
-        if (img.complete) {
-            img.classList.remove('loading');
-            img.classList.add('loaded');
-        }
-    });
-
     // Redimensionnement de la fenêtre
     window.addEventListener('resize', handleResize);
 
-    // Impact section form mobile optimization
-    const impactForm = document.querySelector('#impact .impact-form');
-    if (impactForm) {
-        optimizeImpactFormForMobile(impactForm);
-    }
+    // Optimiser les images d'équipe au redimensionnement
+    window.addEventListener('resize', optimizeTeamImages);
 }
 
 // =====================================================================
@@ -437,40 +356,6 @@ function closeGalleryModal() {
     }
 }
 
-function handleContactFormSubmit(e) {
-    e.preventDefault();
-    
-    const name = document.getElementById('name')?.value;
-    const email = document.getElementById('email')?.value;
-    const subject = document.getElementById('subject')?.value;
-    const reason = document.getElementById('reason')?.value;
-    const message = document.getElementById('message')?.value;
-    
-    if (!name || !email || !reason || !message) {
-        showToast('Veuillez remplir tous les champs obligatoires.', 'error');
-        return;
-    }
-    
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-        showToast('Veuillez entrer une adresse email valide.', 'error');
-        return;
-    }
-    
-    const submitBtn = contactForm.querySelector('button[type="submit"]');
-    const originalText = submitBtn.innerHTML;
-    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Envoi en cours...';
-    submitBtn.disabled = true;
-    
-    // Simulation d'envoi
-    setTimeout(() => {
-        showToast(`Merci ${name}, votre message a bien été enregistré ! Nous vous répondrons dans les plus brefs délais.`, 'success');
-        contactForm.reset();
-        submitBtn.innerHTML = originalText;
-        submitBtn.disabled = false;
-    }, 1500);
-}
-
 function handleProgramTabClick() {
     const programTabs = document.querySelectorAll('.program-tab');
     programTabs.forEach(t => t.classList.remove('active'));
@@ -558,6 +443,9 @@ function handleResize() {
     if (impactForm) {
         optimizeImpactFormForMobile(impactForm);
     }
+    
+    // Ré-optimiser les images d'équipe
+    optimizeTeamImages();
 }
 
 // =====================================================================
@@ -840,13 +728,47 @@ function updateActiveSlideIndex() {
 // FONCTIONS DU CAROUSEL "À PROPOS DE NOUS"
 // =====================================================================
 function initAboutCarousel() {
-    if (!aboutCarouselTrack || !aboutCarouselIndicators) return;
+    // Vérifier si le conteneur existe, sinon le créer
+    const aboutSection = document.querySelector('#about');
+    if (!aboutSection) return;
+    
+    let aboutCarouselContainer = aboutSection.querySelector('.about-carousel-container');
+    
+    if (!aboutCarouselContainer) {
+        // Créer le conteneur du carousel
+        aboutCarouselContainer = document.createElement('div');
+        aboutCarouselContainer.className = 'about-carousel-container';
+        
+        // Créer la piste du carousel
+        aboutCarouselTrack = document.createElement('div');
+        aboutCarouselTrack.className = 'about-carousel-track';
+        aboutCarouselTrack.id = 'aboutCarouselTrack';
+        
+        // Créer les indicateurs
+        const indicatorsContainer = document.createElement('div');
+        indicatorsContainer.className = 'about-carousel-indicators';
+        indicatorsContainer.id = 'aboutCarouselIndicators';
+        
+        aboutCarouselContainer.appendChild(aboutCarouselTrack);
+        aboutCarouselContainer.appendChild(indicatorsContainer);
+        
+        // Ajouter le carousel à la section about
+        const aboutContent = aboutSection.querySelector('.about-content');
+        if (aboutContent) {
+            aboutContent.appendChild(aboutCarouselContainer);
+        } else {
+            aboutSection.appendChild(aboutCarouselContainer);
+        }
+    }
     
     renderAboutCarousel();
     setupAboutCarouselEvents();
+    startAboutCarousel();
 }
 
 function renderAboutCarousel() {
+    if (!aboutCarouselTrack || !aboutCarouselIndicators) return;
+    
     aboutCarouselTrack.innerHTML = '';
     aboutCarouselIndicators.innerHTML = '';
     
@@ -864,14 +786,26 @@ function renderAboutCarousel() {
         img.style.width = '100%';
         img.style.height = '100%';
         img.style.objectFit = 'cover';
+        img.style.borderRadius = '12px';
         
         img.onerror = function() {
             this.style.display = 'none';
             const placeholder = document.createElement('div');
-            placeholder.className = 'image-placeholder';
+            placeholder.className = 'about-image-placeholder';
+            placeholder.style.cssText = `
+                width: 100%;
+                height: 100%;
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+                align-items: center;
+                background: linear-gradient(135deg, var(--primary-light), var(--secondary));
+                color: white;
+                border-radius: 12px;
+            `;
             placeholder.innerHTML = `
-                <i class="fas fa-image" aria-hidden="true"></i>
-                <p>Image ${index + 1}</p>
+                <i class="fas fa-image" style="font-size: 48px; margin-bottom: 10px;"></i>
+                <p style="font-size: 16px; text-align: center;">Image ${index + 1}</p>
             `;
             slide.appendChild(placeholder);
         };
@@ -884,15 +818,32 @@ function renderAboutCarousel() {
         indicator.className = 'about-carousel-indicator';
         indicator.dataset.index = index;
         indicator.setAttribute('aria-label', `Aller à l'image ${index + 1}`);
+        indicator.style.cssText = `
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: var(--light, #f8f9fa);
+            border: 2px solid var(--primary, #007bff);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin: 0 5px;
+        `;
         
         if (index === 0) {
             indicator.classList.add('active');
             indicator.setAttribute('aria-current', 'true');
+            indicator.style.background = 'var(--primary, #007bff)';
+            indicator.style.transform = 'scale(1.2)';
         }
         
         indicator.addEventListener('click', () => {
             scrollToAboutSlide(index);
         });
+        
+        indicator.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            scrollToAboutSlide(index);
+        }, { passive: false });
         
         aboutCarouselIndicators.appendChild(indicator);
     });
@@ -912,6 +863,8 @@ function startAboutCarousel() {
 }
 
 function scrollToAboutSlide(index) {
+    if (!aboutCarouselTrack) return;
+    
     const slides = aboutCarouselTrack.querySelectorAll('.about-carousel-slide');
     if (slides[index]) {
         aboutCurrentSlideIndex = index;
@@ -926,19 +879,27 @@ function scrollToAboutSlide(index) {
 }
 
 function updateAboutCarouselIndicators() {
+    if (!aboutCarouselIndicators) return;
+    
     const indicators = aboutCarouselIndicators.querySelectorAll('.about-carousel-indicator');
     indicators.forEach((indicator, index) => {
         if (index === aboutCurrentSlideIndex) {
             indicator.classList.add('active');
             indicator.setAttribute('aria-current', 'true');
+            indicator.style.background = 'var(--primary, #007bff)';
+            indicator.style.transform = 'scale(1.2)';
         } else {
             indicator.classList.remove('active');
             indicator.removeAttribute('aria-current');
+            indicator.style.background = 'var(--light, #f8f9fa)';
+            indicator.style.transform = 'scale(1)';
         }
     });
 }
 
 function setupAboutCarouselEvents() {
+    if (!aboutCarouselTrack) return;
+    
     // Arrêter le défilement automatique au survol
     aboutCarouselTrack.addEventListener('mouseenter', () => {
         if (aboutCarouselInterval) {
@@ -975,48 +936,137 @@ function setupAboutCarouselEvents() {
 }
 
 // =====================================================================
+// FONCTIONS POUR LES IMAGES D'ÉQUIPE
+// =====================================================================
+function initTeamImages() {
+    optimizeTeamImages();
+    
+    // Observer le chargement des images d'équipe
+    const teamImages = document.querySelectorAll('.team-img');
+    teamImages.forEach(img => {
+        img.addEventListener('load', handleTeamImageLoad);
+        
+        if (img.complete) {
+            handleTeamImageLoad.call(img);
+        }
+    });
+}
+
+function handleTeamImageLoad() {
+    this.style.opacity = '1';
+    this.style.transform = 'scale(1)';
+    
+    // Ajouter une transition pour un effet doux
+    this.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+}
+
+function optimizeTeamImages() {
+    const teamCards = document.querySelectorAll('.team-card');
+    if (!teamCards.length) return;
+    
+    teamCards.forEach(card => {
+        const imgContainer = card.querySelector('.team-img-container');
+        if (!imgContainer) return;
+        
+        const img = imgContainer.querySelector('img');
+        
+        if (isMobile) {
+            // Style pour mobile
+            imgContainer.style.cssText = `
+                position: relative;
+                width: 200px;
+                height: 200px;
+                margin: 0 auto 20px auto;
+                border-radius: 50%;
+                overflow: hidden;
+                border: 4px solid var(--primary-soft);
+                box-shadow: 0 6px 20px rgba(0,0,0,0.1);
+                display: flex;
+                justify-content: center;
+                align-items: center;
+            `;
+            
+            if (img) {
+                img.style.cssText = `
+                    width: 100%;
+                    height: 100%;
+                    object-fit: cover;
+                    object-position: center;
+                    transition: transform 0.3s ease;
+                `;
+            }
+            
+            // Centrer le contenu de la carte
+            const teamInfo = card.querySelector('.team-info');
+            if (teamInfo) {
+                teamInfo.style.textAlign = 'center';
+                teamInfo.style.padding = '20px 15px';
+            }
+            
+            // Centrer les icônes sociales
+            const socialLinks = card.querySelector('.team-social');
+            if (socialLinks) {
+                socialLinks.style.justifyContent = 'center';
+                socialLinks.style.marginTop = '15px';
+            }
+        } else {
+            // Style pour desktop
+            imgContainer.style.cssText = `
+                position: relative;
+                width: 100%;
+                height: 350px;
+                border-radius: 12px 12px 0 0;
+                overflow: hidden;
+            `;
+            
+            if (img) {
+                img.style.cssText = `
+                    width: 100%;
+                    height: 100%;
+                    object-fit: cover;
+                    object-position: center;
+                    transition: transform 0.3s ease;
+                `;
+            }
+        }
+    });
+}
+
+// =====================================================================
 // FONCTIONS POUR "À PROPOS DE NOUS"
 // =====================================================================
 function initAboutSection() {
     const aboutSection = document.querySelector('#about');
-    if (aboutSection) {
-        // Ajouter des classes pour le responsive
-        const aboutContent = aboutSection.querySelector('.about-content');
-        if (aboutContent) {
-            aboutContent.classList.add('mobile-optimized');
-        }
-        
-        // Optimiser les images dans la section about
-        const aboutImages = aboutSection.querySelectorAll('img');
-        aboutImages.forEach(img => {
-            img.loading = 'lazy';
-            img.style.maxWidth = '100%';
-            img.style.height = 'auto';
-        });
-        
-        // Animer les statistiques
-        const stats = aboutSection.querySelectorAll('.stat-item');
-        stats.forEach(stat => {
-            stat.style.opacity = '0';
-            stat.style.transform = 'translateY(20px)';
-            stat.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
-        });
-        
-        // Observer pour l'animation
-        const observer = new IntersectionObserver((entries) => {
-            entries.forEach(entry => {
-                if (entry.isIntersecting) {
-                    const index = Array.from(stats).indexOf(entry.target);
-                    setTimeout(() => {
-                        entry.target.style.opacity = '1';
-                        entry.target.style.transform = 'translateY(0)';
-                    }, index * 100);
-                }
-            });
-        }, { threshold: 0.1 });
-        
-        stats.forEach(stat => observer.observe(stat));
+    if (!aboutSection) return;
+    
+    // Optimiser les éléments pour le responsive
+    const aboutContent = aboutSection.querySelector('.about-content');
+    if (aboutContent) {
+        aboutContent.classList.add('mobile-optimized');
     }
+    
+    // Animer les statistiques
+    const stats = aboutSection.querySelectorAll('.stat-item');
+    stats.forEach(stat => {
+        stat.style.opacity = '0';
+        stat.style.transform = 'translateY(20px)';
+        stat.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+    });
+    
+    // Observer pour l'animation
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                const index = Array.from(stats).indexOf(entry.target);
+                setTimeout(() => {
+                    entry.target.style.opacity = '1';
+                    entry.target.style.transform = 'translateY(0)';
+                }, index * 100);
+            }
+        });
+    }, { threshold: 0.1 });
+    
+    stats.forEach(stat => observer.observe(stat));
 }
 
 // =====================================================================
@@ -1024,36 +1074,36 @@ function initAboutSection() {
 // =====================================================================
 function initImpactSection() {
     const impactSection = document.querySelector('#impact');
-    if (impactSection) {
-        // Optimiser pour mobile
-        const impactForm = impactSection.querySelector('.impact-form');
-        if (impactForm) {
-            optimizeImpactFormForMobile(impactForm);
-        }
-        
-        // Animer les éléments d'impact
-        const impactItems = impactSection.querySelectorAll('.impact-item');
-        impactItems.forEach(item => {
-            item.style.opacity = '0';
-            item.style.transform = 'translateY(20px)';
-            item.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
-        });
-        
-        // Observer pour l'animation
-        const observer = new IntersectionObserver((entries) => {
-            entries.forEach(entry => {
-                if (entry.isIntersecting) {
-                    const index = Array.from(impactItems).indexOf(entry.target);
-                    setTimeout(() => {
-                        entry.target.style.opacity = '1';
-                        entry.target.style.transform = 'translateY(0)';
-                    }, index * 100);
-                }
-            });
-        }, { threshold: 0.1 });
-        
-        impactItems.forEach(item => observer.observe(item));
+    if (!impactSection) return;
+    
+    // Optimiser pour mobile
+    const impactForm = impactSection.querySelector('.impact-form');
+    if (impactForm) {
+        optimizeImpactFormForMobile(impactForm);
     }
+    
+    // Animer les éléments d'impact
+    const impactItems = impactSection.querySelectorAll('.impact-item');
+    impactItems.forEach(item => {
+        item.style.opacity = '0';
+        item.style.transform = 'translateY(20px)';
+        item.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+    });
+    
+    // Observer pour l'animation
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                const index = Array.from(impactItems).indexOf(entry.target);
+                setTimeout(() => {
+                    entry.target.style.opacity = '1';
+                    entry.target.style.transform = 'translateY(0)';
+                }, index * 100);
+            }
+        });
+    }, { threshold: 0.1 });
+    
+    impactItems.forEach(item => observer.observe(item));
 }
 
 function optimizeImpactFormForMobile(form) {
@@ -1061,67 +1111,188 @@ function optimizeImpactFormForMobile(form) {
     
     if (isMobile) {
         // Style pour mobile
-        form.style.padding = '20px';
-        form.style.margin = '20px 0';
-        form.style.maxWidth = '100%';
-        form.style.width = '100%';
+        form.style.cssText = `
+            padding: 20px;
+            margin: 20px auto;
+            max-width: 100%;
+            width: 100%;
+            box-sizing: border-box;
+        `;
         
         // Optimiser les champs de formulaire
-        const inputs = form.querySelectorAll('input, textarea, select, button');
+        const inputs = form.querySelectorAll('input, textarea, select');
         inputs.forEach(input => {
-            input.style.fontSize = '16px'; // Empêcher le zoom automatique sur iOS
-            input.style.padding = '12px';
-            input.style.marginBottom = '15px';
-            input.style.width = '100%';
-            input.style.boxSizing = 'border-box';
+            input.style.cssText = `
+                font-size: 16px;
+                padding: 12px;
+                margin-bottom: 15px;
+                width: 100%;
+                box-sizing: border-box;
+                border-radius: 8px;
+                border: 1px solid var(--border-color);
+            `;
         });
         
         // Optimiser les boutons
         const buttons = form.querySelectorAll('button');
         buttons.forEach(button => {
-            button.style.padding = '15px';
-            button.style.fontSize = '18px';
-            button.style.width = '100%';
+            button.style.cssText = `
+                padding: 15px 25px;
+                font-size: 18px;
+                width: 100%;
+                border-radius: 8px;
+                background: var(--secondary);
+                color: white;
+                border: none;
+                cursor: pointer;
+                transition: all 0.3s ease;
+            `;
+            
+            button.addEventListener('touchstart', function() {
+                this.style.transform = 'scale(0.98)';
+            });
+            
+            button.addEventListener('touchend', function() {
+                this.style.transform = 'scale(1)';
+            });
         });
         
         // Optimiser les labels
         const labels = form.querySelectorAll('label');
         labels.forEach(label => {
-            label.style.display = 'block';
-            label.style.marginBottom = '8px';
-            label.style.fontSize = '16px';
-            label.style.fontWeight = 'bold';
+            label.style.cssText = `
+                display: block;
+                margin-bottom: 8px;
+                font-size: 16px;
+                font-weight: bold;
+                color: var(--text-primary);
+            `;
+        });
+        
+        // Optimiser les groupes de formulaire
+        const formGroups = form.querySelectorAll('.form-group');
+        formGroups.forEach(group => {
+            group.style.marginBottom = '20px';
         });
     } else {
         // Réinitialiser pour desktop
-        form.style.padding = '';
-        form.style.margin = '';
-        form.style.maxWidth = '';
-        form.style.width = '';
+        form.style.cssText = '';
         
-        const inputs = form.querySelectorAll('input, textarea, select, button');
+        const inputs = form.querySelectorAll('input, textarea, select');
         inputs.forEach(input => {
-            input.style.fontSize = '';
-            input.style.padding = '';
-            input.style.marginBottom = '';
-            input.style.width = '';
+            input.style.cssText = '';
         });
         
         const buttons = form.querySelectorAll('button');
         buttons.forEach(button => {
-            button.style.padding = '';
-            button.style.fontSize = '';
-            button.style.width = '';
+            button.style.cssText = '';
+            button.removeEventListener('touchstart', null);
+            button.removeEventListener('touchend', null);
         });
         
         const labels = form.querySelectorAll('label');
         labels.forEach(label => {
-            label.style.display = '';
-            label.style.marginBottom = '';
-            label.style.fontSize = '';
-            label.style.fontWeight = '';
+            label.style.cssText = '';
+        });
+        
+        const formGroups = form.querySelectorAll('.form-group');
+        formGroups.forEach(group => {
+            group.style.marginBottom = '';
         });
     }
+}
+
+// =====================================================================
+// FONCTIONS POUR LES FORMULAIRES
+// =====================================================================
+function initForms() {
+    initContactForm();
+    initNewsletterForm();
+    initDonationForms();
+}
+
+function initContactForm() {
+    const contactForm = document.getElementById('contactForm');
+    if (!contactForm) return;
+    
+    contactForm.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const data = {
+            nom: document.getElementById('name')?.value,
+            email: document.getElementById('email')?.value,
+            sujet: document.getElementById('subject')?.value,
+            motif: document.getElementById('reason')?.value,
+            message: document.getElementById('message')?.value
+        };
+        
+        // Validation
+        if (!data.nom || !data.email || !data.message) {
+            showToast('Veuillez remplir tous les champs obligatoires.', 'error');
+            return;
+        }
+        
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(data.email)) {
+            showToast('Veuillez entrer une adresse email valide.', 'error');
+            return;
+        }
+        
+        const submitBtn = contactForm.querySelector('button[type="submit"]');
+        const originalText = submitBtn.innerHTML;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Envoi en cours...';
+        submitBtn.disabled = true;
+        
+        // Simulation d'envoi
+        setTimeout(() => {
+            showToast(`Merci ${data.nom}, votre message a bien été enregistré ! Nous vous répondrons dans les plus brefs délais.`, 'success');
+            contactForm.reset();
+            submitBtn.innerHTML = originalText;
+            submitBtn.disabled = false;
+        }, 1500);
+    });
+    
+    // Optimiser pour mobile
+    if (isMobile) {
+        const inputs = contactForm.querySelectorAll('input, textarea, select');
+        inputs.forEach(input => {
+            input.style.fontSize = '16px';
+        });
+    }
+}
+
+function initNewsletterForm() {
+    const newsletterForm = document.querySelector('.newsletter-form');
+    if (!newsletterForm) return;
+    
+    const newsletterBtn = newsletterForm.querySelector('.newsletter-btn');
+    const newsletterInput = newsletterForm.querySelector('.newsletter-input');
+    
+    if (!newsletterBtn || !newsletterInput) return;
+    
+    newsletterBtn.addEventListener('click', (e) => handleNewsletterSubmit(e, newsletterInput, newsletterBtn));
+    newsletterInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            newsletterBtn.click();
+        }
+    });
+}
+
+function initDonationForms() {
+    const donationButtons = document.querySelectorAll('[data-donation-type]');
+    donationButtons.forEach(button => {
+        button.addEventListener('click', () => {
+            const type = button.getAttribute('data-donation-type');
+            showDonationModal(type);
+        });
+        
+        button.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            const type = button.getAttribute('data-donation-type');
+            showDonationModal(type);
+        }, { passive: false });
+    });
 }
 
 // =====================================================================
@@ -1129,35 +1300,6 @@ function optimizeImpactFormForMobile(form) {
 // =====================================================================
 function checkMobileView() {
     isMobile = window.innerWidth <= 768;
-}
-
-function centerTeamImages() {
-    const teamImageContainers = document.querySelectorAll('.team-img-container');
-    teamImageContainers.forEach(container => {
-        container.style.display = 'flex';
-        container.style.justifyContent = 'center';
-        container.style.alignItems = 'center';
-        container.style.margin = '0 auto';
-        
-        const img = container.querySelector('img');
-        if (img) {
-            img.style.objectFit = 'cover';
-            img.style.objectPosition = 'center';
-            img.style.width = '100%';
-            img.style.height = '100%';
-            img.style.maxWidth = '250px';
-            img.style.maxHeight = '250px';
-            img.style.borderRadius = '50%';
-        }
-    });
-    
-    const teamMembers = document.querySelectorAll('.team-member');
-    teamMembers.forEach(member => {
-        member.style.textAlign = 'center';
-        member.style.display = 'flex';
-        member.style.flexDirection = 'column';
-        member.style.alignItems = 'center';
-    });
 }
 
 function setActiveNavLink() {
@@ -1305,6 +1447,7 @@ function openGalleryModal(galleryItem) {
         if (img.tagName === 'IMG') {
             galleryModalImg.src = img.src;
             galleryModalImg.alt = img.alt;
+            galleryModalImg.style.display = 'block';
         } else {
             galleryModalImg.style.display = 'none';
         }
@@ -1315,6 +1458,7 @@ function openGalleryModal(galleryItem) {
         
         // Ajuster le style pour mobile
         if (isMobile) {
+            galleryModal.style.padding = '10px';
             galleryModalImg.style.maxWidth = '90vw';
             galleryModalImg.style.maxHeight = '60vh';
         }
@@ -1370,7 +1514,7 @@ function showToast(message, type = 'success') {
 }
 
 // =====================================================================
-// STYLES DYNAMIQUES POUR LES CAROUSELS
+// AJOUT DES STYLES DYNAMIQUES
 // =====================================================================
 function addDynamicStyles() {
     const style = document.createElement('style');
@@ -1383,6 +1527,7 @@ function addDynamicStyles() {
             overflow: hidden;
             border-radius: 12px;
             box-shadow: 0 8px 30px rgba(0,0,0,0.1);
+            position: relative;
         }
         
         .about-carousel-track {
@@ -1395,13 +1540,7 @@ function addDynamicStyles() {
             min-width: 100%;
             height: 100%;
             position: relative;
-        }
-        
-        .about-carousel-slide img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            border-radius: 12px;
+            flex-shrink: 0;
         }
         
         .about-carousel-indicators {
@@ -1409,34 +1548,71 @@ function addDynamicStyles() {
             justify-content: center;
             gap: 10px;
             margin-top: 20px;
+            padding: 10px;
         }
         
-        .about-carousel-indicator {
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-            background: var(--light, #f8f9fa);
-            border: 2px solid var(--primary, #007bff);
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-        
-        .about-carousel-indicator.active {
-            background: var(--primary, #007bff);
-            transform: scale(1.2);
-        }
-        
-        /* Styles responsive pour mobile */
+        /* Styles responsive pour les images d'équipe */
         @media (max-width: 768px) {
+            .team-card {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                text-align: center;
+                margin: 20px auto;
+                max-width: 300px;
+            }
+            
+            .team-img-container {
+                width: 200px !important;
+                height: 200px !important;
+                margin: 0 auto 20px auto !important;
+                border-radius: 50% !important;
+                overflow: hidden !important;
+                border: 4px solid var(--primary-soft) !important;
+                box-shadow: 0 6px 20px rgba(0,0,0,0.1) !important;
+            }
+            
+            .team-img {
+                width: 100% !important;
+                height: 100% !important;
+                object-fit: cover !important;
+                object-position: center !important;
+                transition: transform 0.3s ease !important;
+            }
+            
+            .team-card:hover .team-img {
+                transform: scale(1.05) !important;
+            }
+            
+            .team-info {
+                padding: 20px 15px !important;
+                text-align: center !important;
+            }
+            
+            .team-social {
+                justify-content: center !important;
+                margin-top: 15px !important;
+            }
+            
+            .team-social a {
+                width: 40px !important;
+                height: 40px !important;
+                display: flex !important;
+                align-items: center !important;
+                justify-content: center !important;
+            }
+            
+            /* Ajustements pour le carousel "À propos" sur mobile */
             .about-carousel-track {
-                height: 300px;
+                height: 300px !important;
             }
             
             .about-carousel-indicator {
-                width: 10px;
-                height: 10px;
+                width: 10px !important;
+                height: 10px !important;
             }
             
+            /* Formulaire d'impact sur mobile */
             .impact-form {
                 padding: 15px !important;
                 margin: 15px 0 !important;
@@ -1459,6 +1635,24 @@ function addDynamicStyles() {
             .impact-form label {
                 font-size: 16px !important;
                 margin-bottom: 10px !important;
+            }
+        }
+        
+        @media (max-width: 576px) {
+            .team-img-container {
+                width: 180px !important;
+                height: 180px !important;
+            }
+            
+            .about-carousel-track {
+                height: 250px !important;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .team-img-container {
+                width: 160px !important;
+                height: 160px !important;
             }
         }
         
@@ -1497,11 +1691,22 @@ function addDynamicStyles() {
             from { opacity: 0; transform: translateY(20px); }
             to { opacity: 1; transform: translateY(0); }
         }
+        
+        /* Améliorations pour les cartes d'équipe */
+        .team-card:hover {
+            transform: translateY(-5px);
+            transition: transform 0.3s ease;
+        }
+        
+        .team-social a:hover {
+            transform: translateY(-3px);
+            transition: transform 0.3s ease;
+        }
     `;
     document.head.appendChild(style);
 }
 
-// Ajouter les styles dynamiques
+// Ajouter les styles dynamiques au chargement
 addDynamicStyles();
 
 // =====================================================================
@@ -1510,3 +1715,4 @@ addDynamicStyles();
 window.showDonationModal = showDonationModal;
 window.openGalleryModal = openGalleryModal;
 window.optimizeImpactFormForMobile = optimizeImpactFormForMobile;
+window.optimizeTeamImages = optimizeTeamImages;
