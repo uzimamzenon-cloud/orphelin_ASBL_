@@ -1781,71 +1781,292 @@ hr {
         grid-template-columns: repeat(2, 1fr);
     }
 }
+
 /* =====================================================================
-   CORRECTIONS ET OPTIMISATIONS MOBILE - SECTION ÉQUIPE CENTRÉE
+   CORRECTIONS COMPLÈTES POUR LA SECTION ÉQUIPE - CENTRALISATION PARFAITE
    ===================================================================== */
 
-/* Section Équipe - Corrections spécifiques pour le centrage sur mobile */
-@media (max-width: 768px) {
+/* =====================================================================
+   SECTION ÉQUIPE - STYLES DE BASE CORRIGÉS
+   ===================================================================== */
+.team-section {
+    background-color: var(--light);
+    position: relative;
+    overflow: hidden;
+    padding: var(--space-10) 0;
+}
+
+.team-section::before,
+.team-section::after {
+    content: '';
+    position: absolute;
+    z-index: 0;
+}
+
+.team-container {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 var(--space-5);
+}
+
+/* =====================================================================
+   GRID ÉQUIPE - CORRECTIONS POUR CENTRALISATION PARFAITE
+   ===================================================================== */
+.team-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: var(--space-7);
+    margin-top: var(--space-8);
+    justify-items: center; /* Centrage horizontal */
+    align-items: start; /* Alignement en haut pour uniformité */
+    width: 100%;
+}
+
+/* Pour desktop - 3 colonnes centrées */
+@media (min-width: 992px) {
+    .team-grid {
+        grid-template-columns: repeat(3, 1fr);
+        gap: var(--space-7);
+    }
+}
+
+/* Pour tablettes - 2 colonnes centrées */
+@media (min-width: 768px) and (max-width: 991px) {
+    .team-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: var(--space-6);
+    }
+}
+
+/* Pour mobile paysage - 2 colonnes centrées */
+@media (min-width: 577px) and (max-width: 767px) {
+    .team-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: var(--space-5);
+        justify-items: center;
+    }
+}
+
+/* =====================================================================
+   CARTE ÉQUIPE - CORRECTIONS POUR CENTRALISATION PARFAITE
+   ===================================================================== */
+.team-card {
+    background-color: var(--white);
+    border-radius: var(--border-radius-lg);
+    overflow: hidden;
+    box-shadow: var(--shadow-lg);
+    border: 2px solid var(--primary-soft);
+    transition: var(--transition);
+    text-align: center;
+    position: relative;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    max-width: 350px; /* Largeur maximale fixe pour uniformité */
+    margin: 0 auto; /* Centrage automatique */
+}
+
+.team-card:hover {
+    transform: translateY(-10px);
+    box-shadow: var(--shadow-hover);
+}
+
+/* =====================================================================
+   CONTENEUR D'IMAGE - CORRECTIONS POUR CENTRALISATION PARFAITE
+   ===================================================================== */
+.team-img-container {
+    position: relative;
+    width: 100%;
+    height: 320px;
+    overflow: hidden;
+    border-radius: var(--border-radius-lg) var(--border-radius-lg) 0 0;
+    background: linear-gradient(135deg, var(--primary-light), var(--secondary));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Image parfaitement centrée */
+.team-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center center;
+    display: block;
+    transition: transform 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.1);
+}
+
+.team-card:hover .team-img {
+    transform: scale(1.05);
+}
+
+/* Placeholder pour images manquantes */
+.team-img-placeholder {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, var(--primary), var(--primary-light));
+    color: var(--white);
+    font-size: var(--font-size-2xl);
+}
+
+/* =====================================================================
+   INFO ÉQUIPE - CORRECTIONS POUR CENTRALISATION PARFAITE
+   ===================================================================== */
+.team-info {
+    padding: var(--space-5);
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center; /* Centrage horizontal */
+    text-align: center; /* Centrage du texte */
+    width: 100%;
+}
+
+.team-name {
+    font-size: var(--font-size-lg);
+    margin-bottom: var(--space-1);
+    color: var(--primary);
+    font-weight: 700;
+    width: 100%;
+    text-align: center;
+}
+
+.team-role {
+    color: var(--secondary);
+    font-weight: 700;
+    font-size: var(--font-size-xs);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: var(--space-4);
+    text-align: center;
+    width: 100%;
+}
+
+.team-description {
+    flex-grow: 1;
+    margin-bottom: var(--space-4);
+    color: var(--text-secondary);
+    word-break: break-word;
+    text-align: center;
+    font-size: var(--font-size-sm);
+    line-height: var(--line-height-relaxed);
+    width: 100%;
+}
+
+/* =====================================================================
+   SOCIAL ÉQUIPE - CORRECTIONS POUR CENTRALISATION PARFAITE
+   ===================================================================== */
+.team-social {
+    display: flex;
+    justify-content: center; /* Centrage horizontal */
+    gap: var(--space-2);
+    flex-wrap: wrap;
+    margin-top: var(--space-3);
+    width: 100%;
+}
+
+.team-social a {
+    width: 40px;
+    height: 40px;
+    background-color: var(--light);
+    border-radius: var(--border-radius-circle);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: var(--transition);
+    color: var(--primary);
+    border: 1px solid var(--border-color);
+    -webkit-tap-highlight-color: transparent;
+}
+
+.team-social a:hover {
+    background-color: var(--primary);
+    color: var(--white);
+    transform: translateY(-5px);
+    border-color: var(--primary);
+}
+
+/* =====================================================================
+   BADGE ÉQUIPE
+   ===================================================================== */
+.team-badge {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    background: linear-gradient(135deg, var(--secondary), var(--secondary-dark));
+    color: var(--white);
+    padding: 6px 12px;
+    border-radius: 50px;
+    font-size: var(--font-size-xs);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    z-index: 2;
+    box-shadow: var(--shadow-sm);
+}
+
+/* =====================================================================
+   CORRECTIONS SPÉCIFIQUES POUR MOBILE (≤ 576px)
+   ===================================================================== */
+@media (max-width: 576px) {
+    /* Section équipe mobile */
     .team-section {
         padding: var(--space-6) 0 !important;
     }
     
     .team-container {
         padding: 0 var(--space-3) !important;
-        max-width: 100% !important;
     }
     
-    /* Force le centrage de la grille */
+    /* Grid mobile - 1 colonne parfaitement centrée */
     .team-grid {
-        display: grid !important;
         grid-template-columns: 1fr !important;
         gap: var(--space-5) !important;
-        width: 100% !important;
-        max-width: 400px !important;
-        margin: var(--space-5) auto 0 !important;
-        padding: 0 !important;
+        margin-top: var(--space-6) !important;
         justify-items: center !important;
+        width: 100% !important;
+        padding: 0 !important;
     }
     
-    /* Correction des cartes d'équipe */
+    /* Carte mobile - parfaitement centrée */
     .team-card {
         width: 100% !important;
-        max-width: 320px !important;
-        margin: 0 auto !important;
+        max-width: 320px !important; /* Largeur optimale pour mobile */
+        margin: 0 auto var(--space-4) !important;
         display: flex !important;
         flex-direction: column !important;
         align-items: center !important;
-        justify-content: center !important;
         border-radius: var(--border-radius-lg) !important;
-        overflow: hidden;
-        box-shadow: var(--shadow-lg);
     }
     
-    /* Correction du conteneur d'image */
+    /* Image mobile - parfaitement centrée */
     .team-img-container {
         width: 100% !important;
-        height: 250px !important;
+        height: 280px !important;
         margin: 0 auto !important;
         border-radius: var(--border-radius-lg) var(--border-radius-lg) 0 0 !important;
-        overflow: hidden;
-        position: relative;
         display: flex !important;
         align-items: center !important;
         justify-content: center !important;
+        overflow: hidden !important;
     }
     
-    /* Correction de l'image */
     .team-img {
         width: 100% !important;
         height: 100% !important;
         object-fit: cover !important;
-        object-position: center center !important;
+        object-position: center !important;
         display: block !important;
-        transition: transform 0.3s ease !important;
     }
     
-    /* Correction de l'information */
+    /* Info mobile - parfaitement centrée */
     .team-info {
         padding: var(--space-4) !important;
         text-align: center !important;
@@ -1857,15 +2078,14 @@ hr {
     
     .team-name {
         font-size: var(--font-size-base) !important;
-        margin-bottom: var(--space-1) !important;
         text-align: center !important;
+        margin-bottom: var(--space-1) !important;
         width: 100% !important;
     }
     
     .team-role {
         text-align: center !important;
         margin-bottom: var(--space-3) !important;
-        font-size: var(--font-size-xs) !important;
         width: 100% !important;
     }
     
@@ -1878,10 +2098,11 @@ hr {
         width: 100% !important;
     }
     
+    /* Social mobile - parfaitement centré */
     .team-social {
         justify-content: center !important;
         gap: var(--space-2) !important;
-        margin-top: var(--space-2) !important;
+        margin-top: var(--space-3) !important;
         width: 100% !important;
     }
     
@@ -1893,42 +2114,52 @@ hr {
         justify-content: center !important;
     }
     
-    /* Badge positionné correctement */
+    /* Badge mobile */
     .team-badge {
-        position: absolute !important;
-        top: 15px !important;
-        right: 15px !important;
-        z-index: 10 !important;
         font-size: 10px !important;
         padding: 4px 8px !important;
     }
 }
 
-/* Pour les très petits écrans */
+/* =====================================================================
+   CORRECTIONS POUR TRÈS PETITS ÉCRANS (≤ 360px)
+   ===================================================================== */
 @media (max-width: 360px) {
     .team-card {
         max-width: 280px !important;
     }
     
     .team-img-container {
-        height: 220px !important;
+        height: 240px !important;
     }
     
     .team-name {
         font-size: var(--font-size-sm) !important;
     }
     
+    .team-role {
+        font-size: 10px !important;
+    }
+    
     .team-description {
         font-size: var(--font-size-xs) !important;
     }
+    
+    .team-social a {
+        width: 32px !important;
+        height: 32px !important;
+        font-size: var(--font-size-sm) !important;
+    }
 }
 
-/* Pour le paysage mobile */
+/* =====================================================================
+   CORRECTIONS POUR PAYSAGE MOBILE (577px - 767px)
+   ===================================================================== */
 @media (min-width: 577px) and (max-width: 767px) {
     .team-grid {
         grid-template-columns: repeat(2, 1fr) !important;
-        max-width: 100% !important;
         gap: var(--space-4) !important;
+        justify-items: center !important;
     }
     
     .team-card {
@@ -1936,513 +2167,289 @@ hr {
     }
     
     .team-img-container {
-        height: 200px !important;
-    }
-}
-
-/* =====================================================================
-   CORRECTIONS GÉNÉRALES POUR MOBILE
-   ===================================================================== */
-
-/* Correction du zoom iOS sur les inputs */
-@media screen and (max-width: 768px) {
-    input[type="text"],
-    input[type="email"],
-    input[type="tel"],
-    input[type="number"],
-    input[type="password"],
-    input[type="search"],
-    textarea,
-    select {
-        font-size: 16px !important;
+        height: 240px !important;
     }
     
-    .form-control {
-        font-size: 16px !important;
-        min-height: 44px;
-    }
-}
-
-/* Correction des boutons pour le toucher */
-@media (max-width: 768px) {
-    .btn,
-    .program-tab,
-    .gallery-filter,
-    .carousel-scroll-btn,
-    .nav-link,
-    .theme-toggle,
-    .mobile-menu-btn {
-        min-height: 44px;
-        min-width: 44px;
-    }
-    
-    /* Désactiver les effets hover sur mobile */
-    .touch-device .btn:hover,
-    .touch-device .card:hover,
-    .touch-device .team-card:hover,
-    .touch-device .value-card:hover {
-        transform: none !important;
-        box-shadow: var(--shadow) !important;
-    }
-    
-    /* Activer les états actifs */
-    .btn:active {
-        transform: scale(0.98) !important;
-    }
-    
-    .team-card:active {
-        transform: scale(0.98) !important;
-    }
-}
-
-/* =====================================================================
-   OPTIMISATIONS DU CAROUSEL POUR MOBILE
-   ===================================================================== */
-@media (max-width: 768px) {
-    .scrollable-carousel {
-        border-radius: var(--border-radius) !important;
-        margin: 0 var(--space-2) !important;
-        width: calc(100% - var(--space-4)) !important;
-    }
-    
-    .carousel-header {
-        padding: var(--space-3) !important;
-    }
-    
-    .carousel-header h3 {
-        font-size: var(--font-size-base) !important;
-    }
-    
-    .carousel-track {
-        padding: var(--space-2) !important;
-        gap: var(--space-3) !important;
-    }
-    
-    .carousel-slide {
-        width: 280px !important;
-        min-width: 280px !important;
-    }
-    
-    .carousel-slide img {
-        height: 180px !important;
-    }
-    
-    .carousel-caption {
-        padding: var(--space-2) !important;
-    }
-    
-    .carousel-caption h4 {
-        font-size: var(--font-size-sm) !important;
-    }
-    
-    .carousel-caption p {
-        font-size: var(--font-size-xs) !important;
-    }
-    
-    .carousel-nav {
-        flex-direction: row !important;
-        gap: var(--space-2) !important;
-        flex-wrap: wrap !important;
-    }
-    
-    .carousel-scroll-btn {
-        width: 36px !important;
-        height: 36px !important;
-        font-size: var(--font-size-sm) !important;
-    }
-}
-
-/* =====================================================================
-   OPTIMISATIONS DU HEADER POUR MOBILE
-   ===================================================================== */
-@media (max-width: 768px) {
-    .header-container {
-        padding: var(--space-2) 0 !important;
-    }
-    
-    .logo {
-        gap: var(--space-2) !important;
-    }
-    
-    .logo-icon {
-        width: 50px !important;
-        height: 50px !important;
-    }
-    
-    .logo-text h1 {
-        font-size: var(--font-size-sm) !important;
-    }
-    
-    .logo-text p {
-        font-size: 10px !important;
-    }
-    
-    .mobile-menu-btn {
-        display: flex !important;
-    }
-    
-    .nav-menu {
-        position: fixed !important;
-        top: 70px !important;
-        left: 0 !important;
-        width: 100% !important;
-        background-color: var(--white) !important;
-        flex-direction: column !important;
-        padding: var(--space-3) !important;
-        box-shadow: var(--shadow-lg) !important;
-        transform: translateY(-100%) !important;
-        opacity: 0 !important;
-        visibility: hidden !important;
-        transition: var(--transition) !important;
-        z-index: var(--z-index-dropdown) !important;
-        max-height: calc(100vh - 70px) !important;
-        overflow-y: auto !important;
-    }
-    
-    .nav-menu.active {
-        transform: translateY(0) !important;
-        opacity: 1 !important;
-        visibility: visible !important;
-    }
-    
-    .nav-link {
-        padding: var(--space-3) !important;
-        width: 100% !important;
-        justify-content: flex-start !important;
-    }
-    
-    .theme-toggle {
-        display: flex !important;
-    }
-}
-
-/* =====================================================================
-   OPTIMISATIONS DU HERO POUR MOBILE
-   ===================================================================== */
-@media (max-width: 768px) {
-    .hero {
-        padding-top: 90px !important;
-        padding-bottom: var(--space-6) !important;
-    }
-    
-    .hero-title {
-        font-size: var(--font-size-2xl) !important;
-        line-height: 1.2 !important;
-        margin-bottom: var(--space-3) !important;
-    }
-    
-    .hero-subtitle {
-        font-size: var(--font-size-base) !important;
-        margin-bottom: var(--space-4) !important;
-    }
-    
-    .hero-buttons {
-        flex-direction: column !important;
-        gap: var(--space-2) !important;
-        margin-bottom: var(--space-4) !important;
-    }
-    
-    .hero-buttons .btn {
-        width: 100% !important;
-        justify-content: center !important;
-        padding: var(--space-3) !important;
-    }
-    
-    .hero-stats {
-        grid-template-columns: 1fr !important;
-        gap: var(--space-3) !important;
-        margin-top: var(--space-4) !important;
-    }
-    
-    .stat-card {
-        padding: var(--space-3) !important;
-    }
-    
-    .stat-number {
-        font-size: var(--font-size-xl) !important;
-    }
-}
-
-/* =====================================================================
-   OPTIMISATIONS DES SECTIONS POUR MOBILE
-   ===================================================================== */
-@media (max-width: 768px) {
-    .section {
-        padding: var(--space-5) 0 !important;
-    }
-    
-    .section-header {
-        margin-bottom: var(--space-4) !important;
-        padding: 0 var(--space-2) !important;
-    }
-    
-    .section-title {
-        font-size: var(--font-size-xl) !important;
-        margin-bottom: var(--space-2) !important;
-    }
-    
-    .section-title::after {
-        width: 60px !important;
-        height: 3px !important;
-        bottom: -10px !important;
-    }
-    
-    .section-subtitle {
-        font-size: var(--font-size-base) !important;
-        padding: 0 var(--space-2) !important;
-    }
-    
-    /* Grilles adaptatives */
-    .values-grid,
-    .programs-grid,
-    .donate-options,
-    .gallery-grid,
-    .events-grid,
-    .mission-vision-grid {
-        grid-template-columns: 1fr !important;
-        gap: var(--space-4) !important;
-    }
-    
-    .impact-stats {
-        grid-template-columns: repeat(2, 1fr) !important;
-        gap: var(--space-3) !important;
-    }
-    
-    /* Cartes optimisées */
-    .value-card,
-    .program-card,
-    .donate-card,
-    .event-card {
-        padding: var(--space-3) !important;
-        margin-bottom: var(--space-3) !important;
-    }
-    
-    .program-header,
-    .donate-header {
-        padding: var(--space-3) !important;
-    }
-    
-    .program-body,
-    .donate-body {
+    .team-info {
         padding: var(--space-3) !important;
     }
 }
 
 /* =====================================================================
-   OPTIMISATIONS DU FOOTER POUR MOBILE
+   CORRECTIONS POUR TABLETTES (768px - 991px)
    ===================================================================== */
-@media (max-width: 768px) {
-    .footer {
-        padding: var(--space-6) 0 var(--space-4) !important;
-    }
-    
-    .footer-content {
-        grid-template-columns: 1fr !important;
-        gap: var(--space-4) !important;
-    }
-    
-    .footer-column {
-        text-align: center !important;
-        margin-bottom: var(--space-4) !important;
-    }
-    
-    .footer-column h3 {
-        font-size: var(--font-size-base) !important;
-        margin-bottom: var(--space-3) !important;
-    }
-    
-    .footer-column h3::after {
-        left: 50% !important;
-        transform: translateX(-50%) !important;
-    }
-    
-    .footer-logo {
-        justify-content: center !important;
-    }
-    
-    .newsletter-form {
-        flex-direction: column !important;
-    }
-    
-    .newsletter-input {
-        border-radius: var(--border-radius-sm) !important;
-        margin-bottom: var(--space-2) !important;
-        width: 100% !important;
-    }
-    
-    .newsletter-btn {
-        border-radius: var(--border-radius-sm) !important;
-        width: 100% !important;
-    }
-    
-    .social-icons {
-        justify-content: center !important;
-    }
-}
-
-/* =====================================================================
-   OPTIMISATIONS DES MODALS POUR MOBILE
-   ===================================================================== */
-@media (max-width: 768px) {
-    .modal {
-        padding: var(--space-3) !important;
-    }
-    
-    .modal-content {
-        padding: var(--space-4) !important;
-        margin: 0 !important;
-        max-height: 95vh !important;
-    }
-    
-    .modal-close {
-        top: var(--space-2) !important;
-        right: var(--space-2) !important;
-        width: 36px !important;
-        height: 36px !important;
-    }
-}
-
-/* =====================================================================
-   OPTIMISATIONS DU CONTACT POUR MOBILE
-   ===================================================================== */
-@media (max-width: 768px) {
-    .contact-container {
-        grid-template-columns: 1fr !important;
-        gap: var(--space-4) !important;
-    }
-    
-    .form-control {
-        padding: var(--space-2) var(--space-3) !important;
-    }
-    
-    .contact-card {
-        padding: var(--space-3) !important;
-    }
-}
-
-/* =====================================================================
-   OPTIMISATIONS DE LA GALLERY POUR MOBILE
-   ===================================================================== */
-@media (max-width: 768px) {
-    .gallery-item {
-        height: 250px !important;
-    }
-    
-    .gallery-placeholder {
-        font-size: 2rem !important;
-    }
-    
-    .gallery-controls {
-        flex-wrap: wrap !important;
-        gap: var(--space-2) !important;
-        margin-top: var(--space-4) !important;
-    }
-}
-
-/* =====================================================================
-   OPTIMISATIONS POUR RÉDUCTION DU MOUVEMENT
-   ===================================================================== */
-@media (prefers-reduced-motion: reduce) {
-    .team-card,
-    .value-card,
-    .program-card,
-    .donate-card,
-    .event-card,
-    .gallery-item {
-        transition: none !important;
-    }
-    
-    .team-card:hover,
-    .value-card:hover,
-    .program-card:hover,
-    .donate-card:hover {
-        transform: none !important;
-    }
-    
-    .team-img {
-        transition: none !important;
-    }
-}
-
-/* =====================================================================
-   CORRECTIONS POUR ACCESSIBILITÉ
-   ===================================================================== */
-@media (max-width: 768px) {
-    /* Taille de texte minimale pour lisibilité */
-    p, li, .team-description, .value-title, .program-features li {
-        font-size: var(--font-size-base) !important;
-        line-height: 1.6 !important;
-    }
-    
-    /* Espacement amélioré */
-    .hero-buttons .btn,
-    .program-tabs .program-tab,
-    .gallery-controls .gallery-filter {
-        margin-bottom: var(--space-2) !important;
-    }
-}
-
-/* =====================================================================
-   SUPPORT POUR ORIENTATION PAYSAGE
-   ===================================================================== */
-@media (orientation: landscape) and (max-height: 600px) {
-    .hero {
-        padding-top: 70px !important;
-        padding-bottom: var(--space-4) !important;
-    }
-    
-    .hero-title {
-        font-size: var(--font-size-xl) !important;
-        margin-bottom: var(--space-2) !important;
-    }
-    
-    .hero-subtitle {
-        font-size: var(--font-size-sm) !important;
-        margin-bottom: var(--space-2) !important;
-    }
-    
-    .section {
-        padding: var(--space-3) 0 !important;
-    }
-    
+@media (min-width: 768px) and (max-width: 991px) {
     .team-grid {
-        grid-template-columns: repeat(2, 1fr) !important;
-        gap: var(--space-3) !important;
+        gap: var(--space-5) !important;
+    }
+    
+    .team-card {
+        max-width: 100% !important;
     }
     
     .team-img-container {
-        height: 180px !important;
+        height: 280px !important;
     }
 }
 
 /* =====================================================================
-   CORRECTIONS POUR ÉCRANS RETINA
+   CORRECTIONS POUR DÉSAKTIVER LES EFFETS HOVER SUR MOBILE
    ===================================================================== */
-@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
-    .team-img {
-        image-rendering: -webkit-optimize-contrast;
-        image-rendering: crisp-edges;
+@media (hover: none) and (pointer: coarse) {
+    .team-card:hover {
+        transform: none !important;
+    }
+    
+    .team-card:hover .team-img {
+        transform: none !important;
+    }
+    
+    .team-social a:hover {
+        transform: none !important;
+        background-color: var(--light) !important;
+        color: var(--primary) !important;
+        border-color: var(--border-color) !important;
+    }
+    
+    /* États actifs pour mobile */
+    .team-card:active {
+        transform: scale(0.98) !important;
+    }
+    
+    .team-social a:active {
+        transform: scale(0.9) !important;
+        background-color: var(--primary) !important;
+        color: var(--white) !important;
+        border-color: var(--primary) !important;
     }
 }
 
 /* =====================================================================
-   IMPRESSION
+   CORRECTIONS POUR LE ZOOM iOS
+   ===================================================================== */
+@media screen and (max-width: 768px) {
+    /* Assurer que les textes ne zooment pas sur iOS */
+    .team-name,
+    .team-role,
+    .team-description {
+        font-size: max(16px, 1rem) !important;
+    }
+    
+    /* Inputs avec taille de police fixe pour éviter le zoom */
+    input[type="text"],
+    input[type="email"],
+    input[type="tel"],
+    textarea {
+        font-size: 16px !important;
+    }
+}
+
+/* =====================================================================
+   CORRECTIONS POUR L'ACCESSIBILITÉ
+   ===================================================================== */
+/* Focus visible pour navigation au clavier */
+.team-social a:focus {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+}
+
+.team-card:focus-within {
+    box-shadow: 0 0 0 3px rgba(26, 74, 158, 0.3);
+}
+
+/* Contraste suffisant pour le texte */
+.team-name {
+    color: var(--primary) !important;
+}
+
+.team-role {
+    color: var(--secondary-dark) !important;
+}
+
+.team-description {
+    color: var(--text-secondary) !important;
+}
+
+/* =====================================================================
+   CORRECTIONS POUR LES IMAGES DE FOND
+   ===================================================================== */
+/* Prévenir le débordement des images */
+.team-img-container {
+    position: relative;
+    overflow: hidden;
+}
+
+/* Image par défaut si chargement échoue */
+.team-img.error {
+    display: none;
+}
+
+.team-img-container::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(135deg, var(--primary), var(--primary-light));
+    display: none;
+    z-index: 1;
+}
+
+.team-img.error + .team-img-container::after {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    content: '👤';
+    color: var(--white);
+    font-size: var(--font-size-2xl);
+}
+
+/* =====================================================================
+   CORRECTIONS POUR LE CHARGEMENT PROGRESSIF
+   ===================================================================== */
+.team-img {
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.team-img.loaded {
+    opacity: 1;
+}
+
+.team-img.loading {
+    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+    background-size: 200% 100%;
+    animation: loading 1.5s infinite;
+}
+
+@keyframes loading {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
+/* =====================================================================
+   CORRECTIONS POUR L'IMPRESSION
    ===================================================================== */
 @media print {
     .team-section {
         break-inside: avoid;
+        page-break-inside: avoid;
     }
     
     .team-card {
         break-inside: avoid;
-        box-shadow: none;
-        border: 1px solid var(--border-color);
+        page-break-inside: avoid;
+        box-shadow: none !important;
+        border: 1px solid #000 !important;
     }
     
     .team-img-container {
         height: 150px !important;
     }
+    
+    .team-social {
+        display: none !important;
+    }
+    
+    .team-badge {
+        background: #000 !important;
+        color: #fff !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
 }
+
+/* =====================================================================
+   CORRECTIONS POUR LE MODE SOMBRE
+   ===================================================================== */
+[data-theme="dark"] .team-card {
+    background-color: var(--white);
+    border-color: var(--primary-transparent);
+}
+
+[data-theme="dark"] .team-img-container {
+    background: linear-gradient(135deg, var(--primary-dark), var(--secondary-dark));
+}
+
+[data-theme="dark"] .team-social a {
+    background-color: var(--dark-gray);
+    border-color: var(--border-color);
+    color: var(--text-primary);
+}
+
+[data-theme="dark"] .team-social a:hover {
+    background-color: var(--primary);
+    color: var(--white);
+}
+
+/* =====================================================================
+   UTILITAIRES POUR LE CENTRAGE
+   ===================================================================== */
+.center-absolute {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+}
+
+.center-flex {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.center-grid {
+    display: grid;
+    place-items: center;
+}
+
+/* Force le centrage sur tous les écrans */
+.team-grid-center {
+    display: grid !important;
+    justify-items: center !important;
+    align-items: start !important;
+}
+
+.team-card-center {
+    margin-left: auto !important;
+    margin-right: auto !important;
+}
+
+.team-img-center {
+    display: block !important;
+    margin: 0 auto !important;
+}
+
+/* =====================================================================
+   CORRECTIONS FINALES POUR GARANTIR LE CENTRAGE
+   ===================================================================== */
+/* Garantir que la grille est toujours centrée */
+.team-grid {
+    justify-content: center !important;
+}
+
+/* Garantir que chaque carte est centrée dans sa cellule */
+.team-grid > * {
+    display: flex !important;
+    justify-content: center !important;
+}
+
+/* Garantir l'alignement vertical uniforme */
+.team-card {
+    align-self: stretch !important;
+    display: flex !important;
+    flex-direction: column !important;
+}
+
+/* Garantir que le contenu remplit l'espace disponible */
+.team-info {
+    flex: 1 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: space-between !important;
+}
+
 
 .team-img-container {
     position: relative;
