@@ -226,11 +226,15 @@ function setupEventListeners() {
     // Close modals with Escape key
     document.addEventListener('keydown', handleEscapeKey);
     
-    // Redimensionnement de la fenêtre
-    window.addEventListener('resize', handleResize);
+    // Redimensionnement de la fenêtre (avec debounce)
+    let resizeTimer;
+    window.addEventListener('resize', () => {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(handleResize, 250);
+    });
 
-    // Optimiser les images d'équipe au redimensionnement
-    window.addEventListener('resize', optimizeTeamImages);
+    // Observer pour les animations au scroll
+    initScrollAnimations();
 }
 
 // =====================================================================
@@ -242,6 +246,9 @@ function handleWindowLoad() {
         animateCounters();
         // Démarrer le carousel "À propos" après le chargement
         startAboutCarousel();
+        
+        // Optimiser les images après chargement complet
+        setTimeout(optimizeTeamImages, 100);
     }, 1000);
 }
 
@@ -438,14 +445,14 @@ function handleResize() {
         document.body.style.overflow = '';
     }
     
+    // Ré-optimiser les images d'équipe
+    optimizeTeamImages();
+    
     // Ré-optimiser le formulaire d'impact pour mobile
     const impactForm = document.querySelector('#impact .impact-form');
     if (impactForm) {
         optimizeImpactFormForMobile(impactForm);
     }
-    
-    // Ré-optimiser les images d'équipe
-    optimizeTeamImages();
 }
 
 // =====================================================================
@@ -553,7 +560,7 @@ function renderCarousel() {
         
         carouselTrack.appendChild(slide);
         
-        // Créer l'indicateur (plus gros sur mobile)
+        // Créer l'indicateur
         const indicator = document.createElement('button');
         indicator.className = 'carousel-indicator';
         indicator.dataset.index = index;
@@ -783,29 +790,14 @@ function renderAboutCarousel() {
         img.src = imageUrl;
         img.alt = `Image ${index + 1} de la section À propos`;
         img.loading = 'lazy';
-        img.style.width = '100%';
-        img.style.height = '100%';
-        img.style.objectFit = 'cover';
-        img.style.borderRadius = '12px';
         
         img.onerror = function() {
             this.style.display = 'none';
             const placeholder = document.createElement('div');
             placeholder.className = 'about-image-placeholder';
-            placeholder.style.cssText = `
-                width: 100%;
-                height: 100%;
-                display: flex;
-                flex-direction: column;
-                justify-content: center;
-                align-items: center;
-                background: linear-gradient(135deg, var(--primary-light), var(--secondary));
-                color: white;
-                border-radius: 12px;
-            `;
             placeholder.innerHTML = `
-                <i class="fas fa-image" style="font-size: 48px; margin-bottom: 10px;"></i>
-                <p style="font-size: 16px; text-align: center;">Image ${index + 1}</p>
+                <i class="fas fa-image"></i>
+                <p>Image ${index + 1}</p>
             `;
             slide.appendChild(placeholder);
         };
@@ -818,22 +810,10 @@ function renderAboutCarousel() {
         indicator.className = 'about-carousel-indicator';
         indicator.dataset.index = index;
         indicator.setAttribute('aria-label', `Aller à l'image ${index + 1}`);
-        indicator.style.cssText = `
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-            background: var(--light, #f8f9fa);
-            border: 2px solid var(--primary, #007bff);
-            cursor: pointer;
-            transition: all 0.3s ease;
-            margin: 0 5px;
-        `;
         
         if (index === 0) {
             indicator.classList.add('active');
             indicator.setAttribute('aria-current', 'true');
-            indicator.style.background = 'var(--primary, #007bff)';
-            indicator.style.transform = 'scale(1.2)';
         }
         
         indicator.addEventListener('click', () => {
@@ -859,7 +839,7 @@ function startAboutCarousel() {
     aboutCarouselInterval = setInterval(() => {
         aboutCurrentSlideIndex = (aboutCurrentSlideIndex + 1) % aboutImages.length;
         scrollToAboutSlide(aboutCurrentSlideIndex);
-    }, 4000); // Change toutes les 4 secondes
+    }, 4000);
 }
 
 function scrollToAboutSlide(index) {
@@ -886,13 +866,9 @@ function updateAboutCarouselIndicators() {
         if (index === aboutCurrentSlideIndex) {
             indicator.classList.add('active');
             indicator.setAttribute('aria-current', 'true');
-            indicator.style.background = 'var(--primary, #007bff)';
-            indicator.style.transform = 'scale(1.2)';
         } else {
             indicator.classList.remove('active');
             indicator.removeAttribute('aria-current');
-            indicator.style.background = 'var(--light, #f8f9fa)';
-            indicator.style.transform = 'scale(1)';
         }
     });
 }
@@ -936,99 +912,146 @@ function setupAboutCarouselEvents() {
 }
 
 // =====================================================================
-// FONCTIONS POUR LES IMAGES D'ÉQUIPE
+// FONCTIONS POUR LES IMAGES D'ÉQUIPE - CORRIGÉES
 // =====================================================================
 function initTeamImages() {
-    optimizeTeamImages();
-    
-    // Observer le chargement des images d'équipe
+    // Attacher les événements aux images d'équipe
     const teamImages = document.querySelectorAll('.team-img');
     teamImages.forEach(img => {
         img.addEventListener('load', handleTeamImageLoad);
+        img.addEventListener('error', handleTeamImageError);
         
+        // Si l'image est déjà chargée
         if (img.complete) {
             handleTeamImageLoad.call(img);
         }
     });
+    
+    // Optimiser les images d'équipe
+    optimizeTeamImages();
 }
 
 function handleTeamImageLoad() {
-    this.style.opacity = '1';
-    this.style.transform = 'scale(1)';
+    // Ajouter une classe pour indiquer que l'image est chargée
+    this.classList.add('loaded');
     
-    // Ajouter une transition pour un effet doux
-    this.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+    // Rendre le conteneur visible
+    const container = this.closest('.team-img-container');
+    if (container) {
+        container.classList.add('loaded');
+    }
+}
+
+function handleTeamImageError() {
+    console.warn('Erreur de chargement de l\'image d\'équipe:', this.src);
+    
+    // Créer un placeholder stylisé
+    const container = this.closest('.team-img-container');
+    if (container) {
+        const placeholder = document.createElement('div');
+        placeholder.className = 'team-img-placeholder';
+        placeholder.innerHTML = `
+            <i class="fas fa-user-circle"></i>
+            <span>Photo non disponible</span>
+        `;
+        container.appendChild(placeholder);
+    }
+    
+    // Masquer l'image défectueuse
+    this.style.display = 'none';
 }
 
 function optimizeTeamImages() {
     const teamCards = document.querySelectorAll('.team-card');
     if (!teamCards.length) return;
     
-    teamCards.forEach(card => {
+    teamCards.forEach((card, index) => {
         const imgContainer = card.querySelector('.team-img-container');
         if (!imgContainer) return;
         
-        const img = imgContainer.querySelector('img');
+        // S'assurer que les classes CSS sont appliquées
+        imgContainer.className = 'team-img-container';
         
-        if (isMobile) {
-            // Style pour mobile
-            imgContainer.style.cssText = `
-                position: relative;
-                width: 200px;
-                height: 200px;
-                margin: 0 auto 20px auto;
-                border-radius: 50%;
-                overflow: hidden;
-                border: 4px solid var(--primary-soft);
-                box-shadow: 0 6px 20px rgba(0,0,0,0.1);
-                display: flex;
-                justify-content: center;
-                align-items: center;
-            `;
+        const img = imgContainer.querySelector('img');
+        if (img) {
+            img.className = 'team-img';
             
-            if (img) {
-                img.style.cssText = `
-                    width: 100%;
-                    height: 100%;
-                    object-fit: cover;
-                    object-position: center;
-                    transition: transform 0.3s ease;
-                `;
-            }
+            // Forcer les propriétés de base pour toutes les tailles d'écran
+            img.style.objectFit = 'cover';
+            img.style.objectPosition = 'center';
+            img.style.width = '100%';
+            img.style.height = '100%';
             
-            // Centrer le contenu de la carte
-            const teamInfo = card.querySelector('.team-info');
-            if (teamInfo) {
-                teamInfo.style.textAlign = 'center';
-                teamInfo.style.padding = '20px 15px';
-            }
-            
-            // Centrer les icônes sociales
-            const socialLinks = card.querySelector('.team-social');
-            if (socialLinks) {
-                socialLinks.style.justifyContent = 'center';
-                socialLinks.style.marginTop = '15px';
-            }
-        } else {
-            // Style pour desktop
-            imgContainer.style.cssText = `
-                position: relative;
-                width: 100%;
-                height: 350px;
-                border-radius: 12px 12px 0 0;
-                overflow: hidden;
-            `;
-            
-            if (img) {
-                img.style.cssText = `
-                    width: 100%;
-                    height: 100%;
-                    object-fit: cover;
-                    object-position: center;
-                    transition: transform 0.3s ease;
-                `;
+            // Ajouter un attribut pour le chargement progressif si manquant
+            if (!img.hasAttribute('loading')) {
+                img.setAttribute('loading', 'lazy');
             }
         }
+        
+        // Vérifier si on est sur mobile
+        const isMobileView = window.innerWidth <= 768;
+        
+        if (isMobileView) {
+            // Appliquer le style mobile
+            card.classList.remove('desktop-view');
+            card.classList.add('mobile-view');
+            
+            // Forcer le style circulaire sur mobile
+            imgContainer.style.borderRadius = '50%';
+            imgContainer.style.width = '200px';
+            imgContainer.style.height = '200px';
+            imgContainer.style.margin = '0 auto 20px auto';
+            imgContainer.style.border = '4px solid var(--primary-soft, rgba(0, 123, 255, 0.1))';
+            
+            if (img) {
+                img.style.borderRadius = '50%';
+            }
+            
+            // Centrer le contenu sur mobile
+            const teamInfo = card.querySelector('.team-info');
+            const socialLinks = card.querySelector('.team-social');
+            
+            if (teamInfo) {
+                teamInfo.style.textAlign = 'center';
+            }
+            
+            if (socialLinks) {
+                socialLinks.style.justifyContent = 'center';
+            }
+        } else {
+            // Appliquer le style desktop
+            card.classList.remove('mobile-view');
+            card.classList.add('desktop-view');
+            
+            // Forcer le style rectangulaire sur desktop
+            imgContainer.style.borderRadius = '12px 12px 0 0';
+            imgContainer.style.width = '100%';
+            imgContainer.style.height = '280px';
+            imgContainer.style.margin = '0';
+            imgContainer.style.border = 'none';
+            
+            if (img) {
+                img.style.borderRadius = '12px 12px 0 0';
+            }
+            
+            // Réinitialiser le style pour desktop
+            const teamInfo = card.querySelector('.team-info');
+            const socialLinks = card.querySelector('.team-social');
+            
+            if (teamInfo) {
+                teamInfo.style.textAlign = '';
+            }
+            
+            if (socialLinks) {
+                socialLinks.style.justifyContent = '';
+            }
+        }
+        
+        // Ajouter une animation d'apparition
+        setTimeout(() => {
+            card.style.opacity = '1';
+            card.style.transform = 'translateY(0)';
+        }, index * 100);
     });
 }
 
@@ -1039,34 +1062,20 @@ function initAboutSection() {
     const aboutSection = document.querySelector('#about');
     if (!aboutSection) return;
     
-    // Optimiser les éléments pour le responsive
-    const aboutContent = aboutSection.querySelector('.about-content');
-    if (aboutContent) {
-        aboutContent.classList.add('mobile-optimized');
-    }
-    
     // Animer les statistiques
     const stats = aboutSection.querySelectorAll('.stat-item');
-    stats.forEach(stat => {
+    stats.forEach((stat, index) => {
         stat.style.opacity = '0';
         stat.style.transform = 'translateY(20px)';
         stat.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
-    });
-    
-    // Observer pour l'animation
-    const observer = new IntersectionObserver((entries) => {
-        entries.forEach(entry => {
-            if (entry.isIntersecting) {
-                const index = Array.from(stats).indexOf(entry.target);
-                setTimeout(() => {
-                    entry.target.style.opacity = '1';
-                    entry.target.style.transform = 'translateY(0)';
-                }, index * 100);
+        
+        setTimeout(() => {
+            if (isElementInViewport(stat)) {
+                stat.style.opacity = '1';
+                stat.style.transform = 'translateY(0)';
             }
-        });
-    }, { threshold: 0.1 });
-    
-    stats.forEach(stat => observer.observe(stat));
+        }, index * 100);
+    });
 }
 
 // =====================================================================
@@ -1084,26 +1093,18 @@ function initImpactSection() {
     
     // Animer les éléments d'impact
     const impactItems = impactSection.querySelectorAll('.impact-item');
-    impactItems.forEach(item => {
+    impactItems.forEach((item, index) => {
         item.style.opacity = '0';
         item.style.transform = 'translateY(20px)';
         item.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
-    });
-    
-    // Observer pour l'animation
-    const observer = new IntersectionObserver((entries) => {
-        entries.forEach(entry => {
-            if (entry.isIntersecting) {
-                const index = Array.from(impactItems).indexOf(entry.target);
-                setTimeout(() => {
-                    entry.target.style.opacity = '1';
-                    entry.target.style.transform = 'translateY(0)';
-                }, index * 100);
+        
+        setTimeout(() => {
+            if (isElementInViewport(item)) {
+                item.style.opacity = '1';
+                item.style.transform = 'translateY(0)';
             }
-        });
-    }, { threshold: 0.1 });
-    
-    impactItems.forEach(item => observer.observe(item));
+        }, index * 100);
+    });
 }
 
 function optimizeImpactFormForMobile(form) {
@@ -1111,68 +1112,28 @@ function optimizeImpactFormForMobile(form) {
     
     if (isMobile) {
         // Style pour mobile
-        form.style.cssText = `
-            padding: 20px;
-            margin: 20px auto;
-            max-width: 100%;
-            width: 100%;
-            box-sizing: border-box;
-        `;
+        form.style.padding = '20px';
+        form.style.margin = '20px auto';
+        form.style.maxWidth = '100%';
+        form.style.boxSizing = 'border-box';
         
         // Optimiser les champs de formulaire
         const inputs = form.querySelectorAll('input, textarea, select');
         inputs.forEach(input => {
-            input.style.cssText = `
-                font-size: 16px;
-                padding: 12px;
-                margin-bottom: 15px;
-                width: 100%;
-                box-sizing: border-box;
-                border-radius: 8px;
-                border: 1px solid var(--border-color);
-            `;
+            input.style.fontSize = '16px';
+            input.style.padding = '12px';
+            input.style.marginBottom = '15px';
+            input.style.width = '100%';
+            input.style.boxSizing = 'border-box';
         });
         
         // Optimiser les boutons
         const buttons = form.querySelectorAll('button');
         buttons.forEach(button => {
-            button.style.cssText = `
-                padding: 15px 25px;
-                font-size: 18px;
-                width: 100%;
-                border-radius: 8px;
-                background: var(--secondary);
-                color: white;
-                border: none;
-                cursor: pointer;
-                transition: all 0.3s ease;
-            `;
-            
-            button.addEventListener('touchstart', function() {
-                this.style.transform = 'scale(0.98)';
-            });
-            
-            button.addEventListener('touchend', function() {
-                this.style.transform = 'scale(1)';
-            });
-        });
-        
-        // Optimiser les labels
-        const labels = form.querySelectorAll('label');
-        labels.forEach(label => {
-            label.style.cssText = `
-                display: block;
-                margin-bottom: 8px;
-                font-size: 16px;
-                font-weight: bold;
-                color: var(--text-primary);
-            `;
-        });
-        
-        // Optimiser les groupes de formulaire
-        const formGroups = form.querySelectorAll('.form-group');
-        formGroups.forEach(group => {
-            group.style.marginBottom = '20px';
+            button.style.padding = '15px 25px';
+            button.style.fontSize = '18px';
+            button.style.width = '100%';
+            button.style.borderRadius = '8px';
         });
     } else {
         // Réinitialiser pour desktop
@@ -1186,18 +1147,6 @@ function optimizeImpactFormForMobile(form) {
         const buttons = form.querySelectorAll('button');
         buttons.forEach(button => {
             button.style.cssText = '';
-            button.removeEventListener('touchstart', null);
-            button.removeEventListener('touchend', null);
-        });
-        
-        const labels = form.querySelectorAll('label');
-        labels.forEach(label => {
-            label.style.cssText = '';
-        });
-        
-        const formGroups = form.querySelectorAll('.form-group');
-        formGroups.forEach(group => {
-            group.style.marginBottom = '';
         });
     }
 }
@@ -1339,27 +1288,52 @@ function isElementInViewport(el) {
     );
 }
 
+function initScrollAnimations() {
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                entry.target.classList.add('visible');
+                
+                // Animer les compteurs si l'élément est une stat
+                if (entry.target.classList.contains('stat-number') || 
+                    entry.target.classList.contains('impact-number')) {
+                    animateCounter(entry.target);
+                }
+            }
+        });
+    }, { threshold: 0.1 });
+    
+    // Observer les éléments à animer
+    document.querySelectorAll('.animate-on-scroll, .stat-number, .impact-number').forEach(el => {
+        observer.observe(el);
+    });
+}
+
 function animateCounters() {
     const counters = document.querySelectorAll('.stat-number, .impact-number');
     counters.forEach(counter => {
         if (isElementInViewport(counter) && !counter.classList.contains('animated')) {
+            animateCounter(counter);
             counter.classList.add('animated');
-            const target = parseInt(counter.getAttribute('data-count')) || 0;
-            const duration = 2000;
-            const increment = target / (duration / 16);
-            
-            let current = 0;
-            const timer = setInterval(() => {
-                current += increment;
-                if (current >= target) {
-                    counter.textContent = target.toLocaleString();
-                    clearInterval(timer);
-                } else {
-                    counter.textContent = Math.floor(current).toLocaleString();
-                }
-            }, 16);
         }
     });
+}
+
+function animateCounter(counter) {
+    const target = parseInt(counter.getAttribute('data-count')) || 0;
+    const duration = 2000;
+    const increment = target / (duration / 16);
+    
+    let current = 0;
+    const timer = setInterval(() => {
+        current += increment;
+        if (current >= target) {
+            counter.textContent = target.toLocaleString();
+            clearInterval(timer);
+        } else {
+            counter.textContent = Math.floor(current).toLocaleString();
+        }
+    }, 16);
 }
 
 function getCookie(name) {
@@ -1519,6 +1493,79 @@ function showToast(message, type = 'success') {
 function addDynamicStyles() {
     const style = document.createElement('style');
     style.textContent = `
+        /* Styles pour les images d'équipe */
+        .team-img-container {
+            position: relative;
+            overflow: hidden;
+            background-color: var(--light-gray, #f5f5f5);
+            transition: all 0.3s ease;
+        }
+        
+        .team-img {
+            display: block;
+            transition: transform 0.3s ease, opacity 0.3s ease;
+            opacity: 0;
+        }
+        
+        .team-img.loaded {
+            opacity: 1;
+        }
+        
+        .team-img-placeholder {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background: linear-gradient(135deg, var(--primary-light, #e3f2fd), var(--secondary-light, #f3e5f5));
+            color: var(--gray, #666);
+            font-size: 14px;
+            text-align: center;
+            z-index: 1;
+        }
+        
+        .team-img-placeholder i {
+            font-size: 48px;
+            margin-bottom: 8px;
+            color: var(--primary, #007bff);
+        }
+        
+        /* Styles mobiles spécifiques pour les images */
+        .team-card.mobile-view .team-img-container {
+            border-radius: 50%;
+            border: 4px solid var(--primary-soft, rgba(0, 123, 255, 0.1));
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
+        }
+        
+        .team-card.mobile-view .team-img {
+            border-radius: 50%;
+        }
+        
+        /* Styles desktop pour les images */
+        .team-card.desktop-view .team-img-container {
+            border-radius: 12px 12px 0 0;
+        }
+        
+        .team-card.desktop-view .team-img {
+            border-radius: 12px 12px 0 0;
+        }
+        
+        /* Animation pour les cartes d'équipe */
+        .team-card {
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity 0.5s ease, transform 0.5s ease;
+        }
+        
+        /* Effet de survol */
+        .team-card:hover .team-img {
+            transform: scale(1.05);
+        }
+        
         /* Styles pour le carousel "À propos de nous" */
         .about-carousel-container {
             width: 100%;
@@ -1543,6 +1590,13 @@ function addDynamicStyles() {
             flex-shrink: 0;
         }
         
+        .about-carousel-slide img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 12px;
+        }
+        
         .about-carousel-indicators {
             display: flex;
             justify-content: center;
@@ -1551,108 +1605,55 @@ function addDynamicStyles() {
             padding: 10px;
         }
         
-        /* Styles responsive pour les images d'équipe */
+        .about-carousel-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: var(--light, #f8f9fa);
+            border: 2px solid var(--primary, #007bff);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .about-carousel-indicator.active {
+            background: var(--primary, #007bff);
+            transform: scale(1.2);
+        }
+        
+        /* Responsive adjustments */
         @media (max-width: 768px) {
-            .team-card {
-                display: flex;
-                flex-direction: column;
-                align-items: center;
-                text-align: center;
-                margin: 20px auto;
-                max-width: 300px;
-            }
-            
-            .team-img-container {
-                width: 200px !important;
-                height: 200px !important;
-                margin: 0 auto 20px auto !important;
-                border-radius: 50% !important;
-                overflow: hidden !important;
-                border: 4px solid var(--primary-soft) !important;
-                box-shadow: 0 6px 20px rgba(0,0,0,0.1) !important;
-            }
-            
-            .team-img {
-                width: 100% !important;
-                height: 100% !important;
-                object-fit: cover !important;
-                object-position: center !important;
-                transition: transform 0.3s ease !important;
-            }
-            
-            .team-card:hover .team-img {
-                transform: scale(1.05) !important;
-            }
-            
-            .team-info {
-                padding: 20px 15px !important;
-                text-align: center !important;
-            }
-            
-            .team-social {
-                justify-content: center !important;
-                margin-top: 15px !important;
-            }
-            
-            .team-social a {
-                width: 40px !important;
-                height: 40px !important;
-                display: flex !important;
-                align-items: center !important;
-                justify-content: center !important;
-            }
-            
-            /* Ajustements pour le carousel "À propos" sur mobile */
             .about-carousel-track {
-                height: 300px !important;
+                height: 300px;
             }
             
             .about-carousel-indicator {
-                width: 10px !important;
-                height: 10px !important;
+                width: 10px;
+                height: 10px;
             }
             
-            /* Formulaire d'impact sur mobile */
-            .impact-form {
-                padding: 15px !important;
-                margin: 15px 0 !important;
-            }
-            
-            .impact-form input,
-            .impact-form textarea,
-            .impact-form select,
-            .impact-form button {
-                font-size: 16px !important;
-                padding: 14px !important;
-                margin-bottom: 12px !important;
-            }
-            
-            .impact-form button {
-                padding: 16px !important;
-                font-size: 18px !important;
-            }
-            
-            .impact-form label {
-                font-size: 16px !important;
-                margin-bottom: 10px !important;
+            /* Ajustements mobiles pour les images d'équipe */
+            .team-card.mobile-view .team-img-container {
+                width: 180px !important;
+                height: 180px !important;
             }
         }
         
         @media (max-width: 576px) {
-            .team-img-container {
-                width: 180px !important;
-                height: 180px !important;
+            .about-carousel-track {
+                height: 250px;
             }
             
-            .about-carousel-track {
-                height: 250px !important;
+            .team-card.mobile-view .team-img-container {
+                width: 160px !important;
+                height: 160px !important;
+                border-width: 3px !important;
             }
         }
         
         @media (max-width: 480px) {
-            .team-img-container {
-                width: 160px !important;
-                height: 160px !important;
+            .team-card.mobile-view .team-img-container {
+                width: 140px !important;
+                height: 140px !important;
             }
         }
         
@@ -1668,39 +1669,31 @@ function addDynamicStyles() {
             transform: translateY(0);
         }
         
-        /* Placeholder pour les images */
-        .image-placeholder {
-            width: 100%;
-            height: 100%;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            background: var(--light-gray, #e9ecef);
-            color: var(--gray, #6c757d);
-            border-radius: 8px;
-        }
-        
-        .image-placeholder i {
-            font-size: 48px;
-            margin-bottom: 10px;
-        }
-        
         /* Toast animations */
         @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
+            from { 
+                opacity: 0; 
+                transform: translateY(20px); 
+            }
+            to { 
+                opacity: 1; 
+                transform: translateY(0); 
+            }
         }
         
-        /* Améliorations pour les cartes d'équipe */
-        .team-card:hover {
-            transform: translateY(-5px);
-            transition: transform 0.3s ease;
+        /* Support pour le thème sombre */
+        [data-theme="dark"] .team-img-placeholder {
+            background: linear-gradient(135deg, var(--dark-primary, #1a237e), var(--dark-secondary, #4a148c));
+            color: var(--dark-text, #e0e0e0);
         }
         
-        .team-social a:hover {
-            transform: translateY(-3px);
-            transition: transform 0.3s ease;
+        [data-theme="dark"] .team-img-placeholder i {
+            color: var(--dark-accent, #64b5f6);
+        }
+        
+        [data-theme="dark"] .team-card.mobile-view .team-img-container {
+            border-color: var(--dark-primary-soft, rgba(100, 181, 246, 0.2));
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
         }
     `;
     document.head.appendChild(style);
