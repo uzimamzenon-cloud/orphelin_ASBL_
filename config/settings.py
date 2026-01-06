@@ -150,6 +150,33 @@ EMAIL_HOST_USER = 'uzimamzenon@gmail.com'
 # Rappel : Surtout ne mets pas ton code Gmail en PUBLIC sur GitHub !
 EMAIL_HOST_PASSWORD = 'dktj wksi qcpk lewn' 
 DEFAULT_FROM_EMAIL = 'uzimamzenon@gmail.com'
-EMAIL_TIMEOUT = 10  # Timeout en secondes pour éviter que ça mouline à l'infini
+EMAIL_TIMEOUT = 10 
+
+# --- LOGGING PROFESSIONNEL (Pour voir les erreurs sur Render) ---
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '{levelname} {asctime} {module} {message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'console': {
+            'level': 'INFO',
+            'class': 'logging.StreamHandler',
+            'formatter': 'verbose',
+        },
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['console'],
+            'level': 'INFO',
+            'propagate': True,
+        },
+    },
+}
+
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
