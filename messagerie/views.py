@@ -15,8 +15,22 @@ def page_accueil(request):
 def enregistrer_message(request):
     if request.method == 'POST':
         try:
+            # Vérifier le contenu de la requête
+            if not request.body:
+                return JsonResponse({
+                    "status": "error",
+                    "message": "Corps de la requête vide"
+                }, status=400)
+            
             # On transforme le JSON reçu en dictionnaire Python
-            donnees = json.loads(request.body)
+            try:
+                donnees = json.loads(request.body)
+            except json.JSONDecodeError as e:
+                print(f"ERREUR JSON: {str(e)}")
+                return JsonResponse({
+                    "status": "error",
+                    "message": f"JSON invalide: {str(e)}"
+                }, status=400)
             
             # --- DEBUG : Affiche dans ton terminal pour vérification ---
             print("Données reçues par Zenon :", donnees) 
@@ -74,7 +88,9 @@ def enregistrer_message(request):
             }, status=201)
 
         except Exception as e:
+            import traceback
             print("ERREUR RENCONTRÉE :", str(e))
+            print("TRACEBACK:", traceback.format_exc())
             return JsonResponse({
                 "status": "error",
                 "message": f"Désolé Zenon, ça a échoué : {str(e)}"

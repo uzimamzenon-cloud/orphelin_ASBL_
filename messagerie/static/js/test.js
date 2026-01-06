@@ -459,6 +459,7 @@ function handleNewsletterSubmit(e, input, btn) {
         // Envoyer au backend Django
         fetch('/envoyer-newsletter/', {
             method: 'POST',
+            credentials: 'same-origin',
             headers: {
                 'Content-Type': 'application/json',
                 'X-Requested-With': 'XMLHttpRequest',
@@ -466,7 +467,15 @@ function handleNewsletterSubmit(e, input, btn) {
             },
             body: JSON.stringify({ email: email })
         })
-            .then(response => response.json())
+            .then(response => {
+                console.log('Newsletter response status:', response.status);
+                if (!response.ok) {
+                    return response.text().then(text => {
+                        throw new Error(`Erreur ${response.status}: ${text}`);
+                    });
+                }
+                return response.json();
+            })
             .then(result => {
                 if (result.status === 'success') {
                     showToast(result.message || `Merci pour votre inscription!`, 'success');
@@ -479,7 +488,7 @@ function handleNewsletterSubmit(e, input, btn) {
             })
             .catch(error => {
                 console.error('Erreur newsletter:', error);
-                showToast('Erreur de connexion au serveur.', 'error');
+                showToast('Erreur de connexion au serveur: ' + error.message, 'error');
             })
             .finally(() => {
                 btn.innerHTML = originalText;
@@ -1292,6 +1301,7 @@ function initContactForm() {
             // Envoi AJAX à Django
             const response = await fetch('/envoyer-contact/', {
                 method: 'POST',
+                credentials: 'same-origin',
                 headers: {
                     'Content-Type': 'application/json',
                     'X-Requested-With': 'XMLHttpRequest',
