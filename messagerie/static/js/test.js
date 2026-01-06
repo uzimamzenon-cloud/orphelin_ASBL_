@@ -161,45 +161,45 @@ function initVariables() {
     carouselIndicators = document.getElementById('carouselIndicators');
     aboutCarouselTrack = document.getElementById('aboutCarouselTrack');
     aboutCarouselIndicators = document.getElementById('aboutCarouselIndicators');
+
+    // Injecter les styles dynamiques
+    addDynamicStyles();
 }
 
 // =====================================================================
 // PRELOADER CORRIGÉ
 // =====================================================================
 function initPreloader() {
-    // Masquer le preloader après le chargement complet
-    window.addEventListener('load', function() {
-        // Court délai pour laisser le temps à tout de se charger
-        setTimeout(() => {
-            if (preloader) {
-                preloader.style.transition = 'opacity 0.5s ease';
-                preloader.style.opacity = '0';
-                
-                // Retirer complètement après la transition
-                setTimeout(() => {
-                    if (preloader) {
-                        preloader.style.display = 'none';
-                        preloader.classList.add('hidden');
-                    }
-                    
-                    // Démarrer les animations après le chargement
-                    animateCounters();
-                    startAboutCarousel();
-                    optimizeTeamImages();
-                }, 500);
-            }
-        }, 500);
-    });
+    // Fonction pour masquer le preloader
+    const hidePreloader = () => {
+        if (preloader && !preloader.classList.contains('hidden')) {
+            preloader.style.transition = 'opacity 0.5s ease';
+            preloader.style.opacity = '0';
 
-    // Fallback: si tout est déjà chargé
-    if (document.readyState === 'complete') {
-        setTimeout(() => {
-            if (preloader) {
+            setTimeout(() => {
                 preloader.style.display = 'none';
                 preloader.classList.add('hidden');
-            }
-        }, 300);
+
+                // Démarrer les animations
+                animateCounters();
+                startAboutCarousel();
+                optimizeTeamImages();
+            }, 500);
+        }
+    };
+
+    // Masquer après chargement (avec délai)
+    window.addEventListener('load', function () {
+        setTimeout(hidePreloader, 500);
+    });
+
+    // Fallback: si déjà chargé
+    if (document.readyState === 'complete') {
+        setTimeout(hidePreloader, 300);
     }
+
+    // SÉCURITÉ : Forcer la fermeture après 5 secondes max (si le load plante)
+    setTimeout(hidePreloader, 5000);
 }
 
 // =====================================================================
@@ -911,7 +911,7 @@ function scrollToAboutSlide(index) {
     if (slides[index]) {
         aboutCurrentSlideIndex = index;
         aboutCarouselTrack.style.transition = 'transform 0.5s ease-in-out';
-        
+
         if (isMobile) {
             // Pour mobile: défilement horizontal
             aboutCarouselTrack.style.transform = `translateX(-${index * 100}%)`;
@@ -919,7 +919,7 @@ function scrollToAboutSlide(index) {
             // Pour desktop: transition normale
             aboutCarouselTrack.style.transform = `translateX(-${index * 100}%)`;
         }
-        
+
         updateAboutCarouselIndicators();
     }
 }
@@ -972,7 +972,7 @@ function setupAboutCarouselEvents() {
             }
             scrollToAboutSlide(aboutCurrentSlideIndex);
         }
-        
+
         // Redémarrer le carousel après interaction tactile
         setTimeout(() => {
             startAboutCarousel();
@@ -991,7 +991,7 @@ function updateAboutCarouselForMobile() {
         aboutCarouselTrack.style.scrollSnapType = 'x mandatory';
         aboutCarouselTrack.style.scrollBehavior = 'smooth';
         aboutCarouselTrack.style.webkitOverflowScrolling = 'touch';
-        
+
         const slides = aboutCarouselTrack.querySelectorAll('.about-carousel-slide');
         slides.forEach(slide => {
             slide.style.flex = '0 0 auto';
@@ -999,7 +999,7 @@ function updateAboutCarouselForMobile() {
             slide.style.scrollSnapAlign = 'start';
             slide.style.scrollSnapStop = 'always';
         });
-        
+
         // S'assurer que l'indicateur actuel est visible
         scrollToAboutSlide(aboutCurrentSlideIndex);
     } else {
@@ -1007,7 +1007,7 @@ function updateAboutCarouselForMobile() {
         aboutCarouselTrack.style.display = 'flex';
         aboutCarouselTrack.style.overflow = 'hidden';
         aboutCarouselTrack.style.scrollSnapType = '';
-        
+
         const slides = aboutCarouselTrack.querySelectorAll('.about-carousel-slide');
         slides.forEach(slide => {
             slide.style.flex = '0 0 100%';
@@ -1022,19 +1022,19 @@ function updateAboutCarouselForMobile() {
 // =====================================================================
 function initTeamImages() {
     const teamImages = document.querySelectorAll('.team-img');
-    
+
     teamImages.forEach((img) => {
         img.style.opacity = '0';
         img.style.transition = 'opacity 0.5s ease';
-        
+
         if (img.complete) {
             img.style.opacity = '1';
         } else {
-            img.addEventListener('load', function() {
+            img.addEventListener('load', function () {
                 this.style.opacity = '1';
             });
-            
-            img.addEventListener('error', function() {
+
+            img.addEventListener('error', function () {
                 this.style.opacity = '1';
                 const container = this.closest('.team-img-container');
                 if (container) {
@@ -1049,14 +1049,14 @@ function initTeamImages() {
             });
         }
     });
-    
+
     // Optimiser après un court délai
     setTimeout(optimizeTeamImages, 100);
 }
 
 function optimizeTeamImages() {
     const teamCards = document.querySelectorAll('.team-card');
-    
+
     if (!teamCards.length) return;
 
     teamCards.forEach((card, index) => {
@@ -1072,7 +1072,7 @@ function optimizeTeamImages() {
             // Forcer l'affichage de l'image
             img.style.opacity = '1';
             img.style.visibility = 'visible';
-            
+
             // Styles responsives
             if (isMobile) {
                 imgContainer.style.width = '180px';
@@ -1080,7 +1080,7 @@ function optimizeTeamImages() {
                 imgContainer.style.margin = '0 auto 20px auto';
                 imgContainer.style.borderRadius = '12px';
                 imgContainer.style.overflow = 'hidden';
-                
+
                 img.style.width = '100%';
                 img.style.height = '100%';
                 img.style.objectFit = 'cover';
@@ -1091,7 +1091,7 @@ function optimizeTeamImages() {
                 imgContainer.style.borderRadius = '10px';
                 imgContainer.style.overflow = 'hidden';
                 imgContainer.style.marginBottom = '20px';
-                
+
                 img.style.width = '100%';
                 img.style.height = '100%';
                 img.style.objectFit = 'cover';
@@ -1258,7 +1258,13 @@ function initContactForm() {
                 message: message
             };
 
+            const csrfToken = getCSRFToken();
             console.log('Données à envoyer:', data);
+            console.log('CSRF Token:', csrfToken);
+
+            if (!csrfToken) {
+                console.warn('ATTENTION: Token CSRF non trouvé !');
+            }
 
             // Envoi AJAX à Django
             const response = await fetch('/envoyer-contact/', {
@@ -1266,7 +1272,7 @@ function initContactForm() {
                 headers: {
                     'Content-Type': 'application/json',
                     'X-Requested-With': 'XMLHttpRequest',
-                    'X-CSRFToken': getCSRFToken()
+                    'X-CSRFToken': csrfToken || ''
                 },
                 body: JSON.stringify(data)
             });
