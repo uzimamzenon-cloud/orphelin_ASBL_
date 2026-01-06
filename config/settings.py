@@ -5,9 +5,21 @@ from pathlib import Path
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # --- SÉCURITÉ ---
-SECRET_KEY = 'django-insecure-cle-de-test-a-changer-en-production'
-DEBUG = True  # Repasse à False quand tu as fini de corriger
-ALLOWED_HOSTS = ['orphelin-prioritee-backend.onrender.com', '127.0.0.1', 'localhost']
+SECRET_KEY = 'django-insecure-zenon-asbl-key-prod'
+
+# On détecte si on est sur Render ou en local
+IS_HEROKU_OR_RENDER = 'RENDER' in os.environ
+
+# DEBUG est True en local, mais False sur Render pour la sécurité
+DEBUG = not IS_HEROKU_OR_RENDER
+
+# --- HÔTES AUTORISÉS (Correction de ton erreur actuelle) ---
+ALLOWED_HOSTS = [
+    'orphelin-asbl.onrender.com', 
+    'orphelin-prioritee-backend.onrender.com', 
+    '127.0.0.1', 
+    'localhost'
+]
 
 # --- APPLICATIONS ---
 INSTALLED_APPS = [
@@ -16,21 +28,18 @@ INSTALLED_APPS = [
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
+    'whitenoise.runserver_nostatic', # Indispensable pour les static
     'django.contrib.staticfiles',
     
-    # Ton application
     'messagerie.apps.MessagerieConfig',
-    
-    # Extensions indispensables
     'corsheaders',
-    'whitenoise.runserver_nostatic', # Aide au développement des fichiers static
 ]
 
-# --- MIDDLEWARE (L'ordre est très strict !) ---
+# --- MIDDLEWARE (Ordre de pro très important !) ---
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
-    'corsheaders.middleware.CorsMiddleware',  # Juste après security
-    'whitenoise.middleware.WhiteNoiseMiddleware', # Pour les images en ligne
+    'whitenoise.middleware.WhiteNoiseMiddleware', # Juste après security
+    'corsheaders.middleware.CorsMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -50,7 +59,7 @@ TEMPLATES = [
             'context_processors': [
                 'django.template.context_processors.debug',
                 'django.template.context_processors.request',
-                'django.template.context_processors.csrf', # Ajouté pour la sécurité
+                'django.template.context_processors.csrf', # Indispensable
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
             ],
@@ -60,8 +69,7 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'config.wsgi.application'
 
-# --- BASE DE DONNÉES (Configuration Intelligente) ---
-# Si tu es sur Render, il cherche PostgreSQL, sinon il utilise SQLite
+# --- BASE DE DONNÉES ---
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
@@ -69,22 +77,12 @@ DATABASES = {
     }
 }
 
-if 'RENDER' in os.environ:
+# Si tu ajoutes une vraie DB PostgreSQL sur Render un jour :
+if IS_HEROKU_OR_RENDER:
     import dj_database_url
-    print("--- RENDER ENVIRONMENT DETECTED ---")
-    
     db_from_env = dj_database_url.config(conn_max_age=600)
     if db_from_env:
         DATABASES['default'] = db_from_env
-        print("--- DATABASE CONFIGURED FROM ENV VAR ---")
-    else:
-        print("!!! WARNING: NO DATABASE_URL CONFIGURED. USING SQLITE (MAY FAIL) !!!")
-
-# --- VALIDATION DES MOTS DE PASSE ---
-AUTH_PASSWORD_VALIDATORS = [
-    {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',},
-    {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',},
-]
 
 # --- LANGUE ET TEMPS ---
 LANGUAGE_CODE = 'fr-fr'
@@ -92,12 +90,17 @@ TIME_ZONE = 'UTC'
 USE_I18N = True
 USE_TZ = True
 
-# --- FICHIERS STATIQUES (CSS, JS, IMAGES) ---
+# --- FICHIERS STATIQUES (La correction pour les images et JS) ---
 STATIC_URL = '/static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
-STATICFILES_DIRS = [os.path.join(BASE_DIR, 'static')]
 
-# Version moderne pour Django 5+ de WhiteNoise
+# Vérifier si le dossier static existe pour éviter les Warnings
+STATICFILES_DIRS = []
+base_static = os.path.join(BASE_DIR, 'static')
+if os.path.exists(base_static):
+    STATICFILES_DIRS.append(base_static)
+
+# Configuration stockage WhiteNoise (Django 5.0+)
 STORAGES = {
     "default": {
         "BACKEND": "django.core.files.storage.FileSystemStorage",
@@ -107,80 +110,30 @@ STORAGES = {
     },
 }
 
-# --- CONFIGURATION CORS (Pour le JavaScript) ---
+# --- SÉCURITÉ CORS ET CSRF ---
+CORS_ALLOW_ALL_ORIGINS = True # Plus simple pour tes tests débutant
 CORS_ALLOW_CREDENTIALS = True
-CORS_ALLOWED_ORIGINS = [
-    "https://orphelin-prioritee-backend.onrender.com",
-    "http://127.0.0.1:8000",
-    "http://localhost:8000",
-]
 
-CORS_ALLOW_HEADERS = [
-    'accept',
-    'accept-encoding',
-    'authorization',
-    'content-type',
-    'dnt',
-    'origin',
-    'user-agent',
-    'x-csrftoken',
-    'x-requested-with',
-]
-
-# Confiance pour Render
 CSRF_TRUSTED_ORIGINS = [
+    'https://orphelin-asbl.onrender.com',
     'https://orphelin-prioritee-backend.onrender.com',
-    'http://127.0.0.1:8000',
-    'http://localhost:8000',
+    'http://127.0.0.1:8000'
 ]
 
-# --- SÉCURITÉ COOKIES (pour HTTPS sur Render) ---
-if 'RENDER' in os.environ:
-    CSRF_COOKIE_SECURE = True
-    SESSION_COOKIE_SECURE = True
-    SECURE_SSL_REDIRECT = True
+# --- SÉCURITÉ HTTPS (Uniquement sur Render) ---
+if IS_HEROKU_OR_RENDER:
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+    SECURE_SSL_REDIRECT = True
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
 
-# --- CONFIGURATION EMAIL (GMAIL) ---
+# --- CONFIGURATION EMAIL ---
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
-
-# Très important : utilise des variables pour ne pas afficher ton mot de passe sur GitHub
-import os
 EMAIL_HOST_USER = 'uzimamzenon@gmail.com'
-# Ce code de 16 lettres doit être ton "Mot de passe d'application" Google
 EMAIL_HOST_PASSWORD = 'dktj wksi qcpk lewn' 
-
 DEFAULT_FROM_EMAIL = f"Orphelin Priorité ASBL <{EMAIL_HOST_USER}>"
-EMAIL_TIMEOUT = 10 
-
-# --- LOGGING PROFESSIONNEL (Pour voir les erreurs sur Render) ---
-LOGGING = {
-    'version': 1,
-    'disable_existing_loggers': False,
-    'formatters': {
-        'verbose': {
-            'format': '{levelname} {asctime} {module} {message}',
-            'style': '{',
-        },
-    },
-    'handlers': {
-        'console': {
-            'level': 'INFO',
-            'class': 'logging.StreamHandler',
-            'formatter': 'verbose',
-        },
-    },
-    'loggers': {
-        'django': {
-            'handlers': ['console'],
-            'level': 'INFO',
-            'propagate': True,
-        },
-    },
-}
-
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
