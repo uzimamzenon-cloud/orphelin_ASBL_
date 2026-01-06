@@ -921,24 +921,25 @@
                     <form id="contactForm">
                         {% csrf_token %}
                         <div class="form-group">
-                            <label for="name" class="form-label">Nom complet</label>
-                            <input type="text" id="name" class="form-control" placeholder="Votre nom complet" required>
-                        </div>
-
-                        <div class="form-group">
-                            <label for="email" class="form-label">Adresse email</label>
-                            <input type="email" id="email" class="form-control" placeholder="Votre adresse email"
+                            <label for="contact-name" class="form-label">Nom complet</label>
+                            <input type="text" id="contact-name" class="form-control" placeholder="Votre nom complet"
                                 required>
                         </div>
 
                         <div class="form-group">
-                            <label for="subject" class="form-label">Sujet</label>
-                            <input type="text" id="subject" class="form-control" placeholder="Sujet du message">
+                            <label for="contact-email" class="form-label">Adresse email</label>
+                            <input type="email" id="contact-email" class="form-control"
+                                placeholder="Votre adresse email" required>
                         </div>
 
                         <div class="form-group">
-                            <label for="reason" class="form-label">Motif de contact</label>
-                            <select id="reason" class="form-control" required>
+                            <label for="contact-subject" class="form-label">Sujet</label>
+                            <input type="text" id="contact-subject" class="form-control" placeholder="Sujet du message">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="contact-reason" class="form-label">Motif de contact</label>
+                            <select id="contact-reason" class="form-control" required>
                                 <option value="" disabled selected>Sélectionnez un motif</option>
                                 <option value="don">Demande d'information sur les dons</option>
                                 <option value="partnership">Proposition de partenariat</option>
@@ -949,8 +950,8 @@
                         </div>
 
                         <div class="form-group">
-                            <label for="message" class="form-label">Message</label>
-                            <textarea id="message" class="form-control" placeholder="Votre message" rows="5"
+                            <label for="contact-message" class="form-label">Message</label>
+                            <textarea id="contact-message" class="form-control" placeholder="Votre message" rows="5"
                                 required></textarea>
                         </div>
 

@@ -1254,18 +1254,44 @@ function initContactForm() {
         e.preventDefault();
         console.log('Soumission du formulaire détectée');
 
-        // Récupération des valeurs AVEC LES BONS ID
-        const name = document.getElementById('name')?.value.trim() || '';
-        const email = document.getElementById('email')?.value.trim() || '';
-        const subject = document.getElementById('subject')?.value.trim() || '';
-        const reason = document.getElementById('reason')?.value || '';
-        const message = document.getElementById('message')?.value.trim() || '';
+        // Récupération des éléments
+        const nameInput = document.getElementById('contact-name');
+        const emailInput = document.getElementById('contact-email');
+        const subjectInput = document.getElementById('contact-subject');
+        const reasonInput = document.getElementById('contact-reason');
+        const messageInput = document.getElementById('contact-message');
+
+        // Récupération des valeurs
+        const name = nameInput ? nameInput.value.trim() : '';
+        const email = emailInput ? emailInput.value.trim() : '';
+        const subject = subjectInput ? subjectInput.value.trim() : '';
+        const reason = reasonInput ? reasonInput.value : '';
+        const message = messageInput ? messageInput.value.trim() : '';
 
         console.log('Données récupérées:', { name, email, subject, reason, message });
 
-        // Validation
-        if (!name || !email || !message) {
+        // Validation détaillée
+        let errors = [];
+        if (!name) errors.push('Nom manquant');
+        if (!email) errors.push('Email manquant');
+        if (!message) errors.push('Message manquant');
+
+        if (errors.length > 0) {
+            console.warn('Erreurs de validation:', errors);
             showToast('Veuillez remplir tous les champs obligatoires (Nom, Email, Message).', 'error');
+
+            // Mettre en évidence les champs manquants
+            if (!name && nameInput) nameInput.classList.add('is-invalid');
+            if (!email && emailInput) emailInput.classList.add('is-invalid');
+            if (!message && messageInput) messageInput.classList.add('is-invalid');
+
+            // Retirer la classe invalid au focus
+            [nameInput, emailInput, messageInput].forEach(input => {
+                if (input) {
+                    input.addEventListener('input', () => input.classList.remove('is-invalid'), { once: true });
+                }
+            });
+
             return;
         }
 
