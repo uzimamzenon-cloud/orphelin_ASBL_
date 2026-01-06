@@ -1347,7 +1347,20 @@ function initContactForm() {
                     showToast(result.message || 'Erreur lors de l\'envoi.', 'error');
                 }
             } else {
-                showToast(`Erreur serveur (${response.status}). Veuillez réessayer.`, 'error');
+                // Si erreur serveur (500, 403, etc.), on lit le message d'erreur pour le débuggage
+                const errorText = await response.text();
+                console.error('ERREUR SERVEUR DÉTAILLÉE:', errorText);
+
+                // Essayer de parser si c'est du JSON
+                try {
+                    const errorJson = JSON.parse(errorText);
+                    console.log('Erreur JSON parsed:', errorJson);
+                    if (errorJson.message) showToast(errorJson.message, 'error');
+                    else showToast(`Erreur serveur (${response.status}).`, 'error');
+                } catch (e) {
+                    // Si HTML (traceback Django), on affiche juste le statut générique
+                    showToast(`Erreur serveur (${response.status}). Voir console pour détails.`, 'error');
+                }
             }
         } catch (error) {
             console.error('Erreur d\'envoi:', error);

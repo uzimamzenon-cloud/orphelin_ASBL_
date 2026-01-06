@@ -71,9 +71,14 @@ DATABASES = {
 
 if 'RENDER' in os.environ:
     import dj_database_url
+    print("--- RENDER ENVIRONMENT DETECTED ---")
+    
     db_from_env = dj_database_url.config(conn_max_age=600)
     if db_from_env:
         DATABASES['default'] = db_from_env
+        print("--- DATABASE CONFIGURED FROM ENV VAR ---")
+    else:
+        print("!!! WARNING: NO DATABASE_URL CONFIGURED. USING SQLITE (MAY FAIL) !!!")
 
 # --- VALIDATION DES MOTS DE PASSE ---
 AUTH_PASSWORD_VALIDATORS = [
