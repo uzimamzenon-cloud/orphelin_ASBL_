@@ -7,17 +7,24 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # --- SÉCURITÉ ---
 SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-zenon-asbl-key-prod')
 
-# On détecte si on est sur Render
+# On détecte si on est sur Render ou en local
+IS_RENDER = 'RENDER' in os.environ
+
+# Sur Render on met DEBUG à False. Pour tes tests tu peux le laisser à True si tu veux voir les erreurs.
+DEBUG = True 
+
+# --- HÔTES AUTORISÉS (Correction majeure ici) ---
+ALLOWED_HOSTS = [
+    'orphelin-asbl.onrender.com',           # Ta nouvelle adresse
+    'orphelin-prioritee-backend.onrender.com', 
+    '127.0.0.1', 
+    'localhost'
+]
+
+# Ajout automatique de l'adresse fournie par Render
 RENDER_EXTERNAL_HOSTNAME = os.environ.get('RENDER_EXTERNAL_HOSTNAME')
-
-# DEBUG est True en local, mais False sur Render
-DEBUG = 'RENDER' not in os.environ
-
-# --- HÔTES AUTORISÉS (La correction est ici) ---
-ALLOWED_HOSTS = ['127.0.0.1', 'localhost']
 if RENDER_EXTERNAL_HOSTNAME:
     ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)
-    ALLOWED_HOSTS.append('orphelin-asbl.onrender.com')
 
 # --- APPLICATIONS ---
 INSTALLED_APPS = [
@@ -26,19 +33,19 @@ INSTALLED_APPS = [
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
-    'whitenoise.runserver_nostatic', 
+    'whitenoise.runserver_nostatic', # Static pro
     'django.contrib.staticfiles',
     
     'messagerie.apps.MessagerieConfig',
     'corsheaders',
 ]
 
-# --- MIDDLEWARE (L'ordre est crucial) ---
+# --- MIDDLEWARE (L'ordre est crucial pour WhiteNoise et CORS) ---
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
-    'whitenoise.middleware.WhiteNoiseMiddleware', # Doit être juste ici
+    'whitenoise.middleware.WhiteNoiseMiddleware', # Juste après Security
     'django.contrib.sessions.middleware.SessionMiddleware',
-    'corsheaders.middleware.CorsMiddleware', # Placé avant CommonMiddleware
+    'corsheaders.middleware.CorsMiddleware', 
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -51,7 +58,7 @@ ROOT_URLCONF = 'config.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [os.path.join(BASE_DIR, 'templates')],
+        'DIRS': [BASE_DIR / 'templates'], # Chemin plus moderne
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -74,7 +81,7 @@ DATABASES = {
     }
 }
 
-if RENDER_EXTERNAL_HOSTNAME: # Si on est sur Render
+if IS_RENDER: 
     import dj_database_url
     db_from_env = dj_database_url.config(conn_max_age=600)
     if db_from_env:
@@ -86,14 +93,14 @@ TIME_ZONE = 'UTC'
 USE_I18N = True
 USE_TZ = True
 
-# --- FICHIERS STATIQUES ---
+# --- FICHIERS STATIQUES (CSS, JS, IMAGES) ---
 STATIC_URL = '/static/'
-STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+STATIC_ROOT = BASE_DIR / 'staticfiles'
 
-# Vérifier si le dossier static local existe
-STATICFILES_DIRS = [os.path.join(BASE_DIR, 'static')] if os.path.exists(os.path.join(BASE_DIR, 'static')) else []
+# Dossier static à la racine
+STATICFILES_DIRS = [BASE_DIR / 'static'] if (BASE_DIR / 'static').exists() else []
 
-# Gestion WhiteNoise (Pour les images et JS en ligne)
+# Configuration stockage moderne (Django 5.0+)
 STORAGES = {
     "default": {
         "BACKEND": "django.core.files.storage.FileSystemStorage",
@@ -103,23 +110,24 @@ STORAGES = {
     },
 }
 
-# --- SÉCURITÉ CORS ET CSRF ---
-CORS_ALLOW_ALL_ORIGINS = True # Simplifie pour éviter les bugs au début
+# --- SÉCURITÉ CORS ET CSRF (Correction des adresses) ---
+CORS_ALLOW_ALL_ORIGINS = True 
 CORS_ALLOW_CREDENTIALS = True
 
 CSRF_TRUSTED_ORIGINS = [
     'https://orphelin-asbl.onrender.com',
-    'https://orphelin-prioritee-backend.onrender.com'
+    'https://orphelin-prioritee-backend.onrender.com',
+    'http://127.0.0.1:8000'
 ]
 
 # --- SÉCURITÉ HTTPS SUR RENDER ---
-if RENDER_EXTERNAL_HOSTNAME:
+if IS_RENDER:
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
     SECURE_SSL_REDIRECT = True
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
 
-# --- CONFIGURATION EMAIL ---
+# --- CONFIGURATION EMAIL (GMAIL) ---
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
