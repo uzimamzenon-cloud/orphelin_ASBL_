@@ -5,21 +5,19 @@ from pathlib import Path
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # --- SÉCURITÉ ---
-SECRET_KEY = 'django-insecure-zenon-asbl-key-prod'
+SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-zenon-asbl-key-prod')
 
-# On détecte si on est sur Render ou en local
-IS_HEROKU_OR_RENDER = 'RENDER' in os.environ
+# On détecte si on est sur Render
+RENDER_EXTERNAL_HOSTNAME = os.environ.get('RENDER_EXTERNAL_HOSTNAME')
 
-# DEBUG est True en local, mais False sur Render pour la sécurité
-DEBUG = not IS_HEROKU_OR_RENDER
+# DEBUG est True en local, mais False sur Render
+DEBUG = 'RENDER' not in os.environ
 
-# --- HÔTES AUTORISÉS (Correction de ton erreur actuelle) ---
-ALLOWED_HOSTS = [
-    'orphelin-asbl.onrender.com', 
-    'orphelin-prioritee-backend.onrender.com', 
-    '127.0.0.1', 
-    'localhost'
-]
+# --- HÔTES AUTORISÉS (La correction est ici) ---
+ALLOWED_HOSTS = ['127.0.0.1', 'localhost']
+if RENDER_EXTERNAL_HOSTNAME:
+    ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)
+    ALLOWED_HOSTS.append('orphelin-asbl.onrender.com')
 
 # --- APPLICATIONS ---
 INSTALLED_APPS = [
@@ -28,19 +26,19 @@ INSTALLED_APPS = [
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
-    'whitenoise.runserver_nostatic', # Indispensable pour les static
+    'whitenoise.runserver_nostatic', 
     'django.contrib.staticfiles',
     
     'messagerie.apps.MessagerieConfig',
     'corsheaders',
 ]
 
-# --- MIDDLEWARE (Ordre de pro très important !) ---
+# --- MIDDLEWARE (L'ordre est crucial) ---
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
-    'whitenoise.middleware.WhiteNoiseMiddleware', # Juste après security
-    'corsheaders.middleware.CorsMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware', # Doit être juste ici
     'django.contrib.sessions.middleware.SessionMiddleware',
+    'corsheaders.middleware.CorsMiddleware', # Placé avant CommonMiddleware
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -59,7 +57,6 @@ TEMPLATES = [
             'context_processors': [
                 'django.template.context_processors.debug',
                 'django.template.context_processors.request',
-                'django.template.context_processors.csrf', # Indispensable
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
             ],
@@ -77,8 +74,7 @@ DATABASES = {
     }
 }
 
-# Si tu ajoutes une vraie DB PostgreSQL sur Render un jour :
-if IS_HEROKU_OR_RENDER:
+if RENDER_EXTERNAL_HOSTNAME: # Si on est sur Render
     import dj_database_url
     db_from_env = dj_database_url.config(conn_max_age=600)
     if db_from_env:
@@ -90,17 +86,14 @@ TIME_ZONE = 'UTC'
 USE_I18N = True
 USE_TZ = True
 
-# --- FICHIERS STATIQUES (La correction pour les images et JS) ---
+# --- FICHIERS STATIQUES ---
 STATIC_URL = '/static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
-# Vérifier si le dossier static existe pour éviter les Warnings
-STATICFILES_DIRS = []
-base_static = os.path.join(BASE_DIR, 'static')
-if os.path.exists(base_static):
-    STATICFILES_DIRS.append(base_static)
+# Vérifier si le dossier static local existe
+STATICFILES_DIRS = [os.path.join(BASE_DIR, 'static')] if os.path.exists(os.path.join(BASE_DIR, 'static')) else []
 
-# Configuration stockage WhiteNoise (Django 5.0+)
+# Gestion WhiteNoise (Pour les images et JS en ligne)
 STORAGES = {
     "default": {
         "BACKEND": "django.core.files.storage.FileSystemStorage",
@@ -111,17 +104,16 @@ STORAGES = {
 }
 
 # --- SÉCURITÉ CORS ET CSRF ---
-CORS_ALLOW_ALL_ORIGINS = True # Plus simple pour tes tests débutant
+CORS_ALLOW_ALL_ORIGINS = True # Simplifie pour éviter les bugs au début
 CORS_ALLOW_CREDENTIALS = True
 
 CSRF_TRUSTED_ORIGINS = [
     'https://orphelin-asbl.onrender.com',
-    'https://orphelin-prioritee-backend.onrender.com',
-    'http://127.0.0.1:8000'
+    'https://orphelin-prioritee-backend.onrender.com'
 ]
 
-# --- SÉCURITÉ HTTPS (Uniquement sur Render) ---
-if IS_HEROKU_OR_RENDER:
+# --- SÉCURITÉ HTTPS SUR RENDER ---
+if RENDER_EXTERNAL_HOSTNAME:
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
     SECURE_SSL_REDIRECT = True
     SESSION_COOKIE_SECURE = True
