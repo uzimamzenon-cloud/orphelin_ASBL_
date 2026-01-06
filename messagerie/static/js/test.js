@@ -57,40 +57,6 @@ let touchStartX = 0;
 let touchEndX = 0;
 
 // =====================================================================
-// FONCTION POUR ÉVITER LA PAGE RENDER - SOLUTION CRITIQUE
-// =====================================================================
-function checkAndPreventRenderPage() {
-    // Vérifier si nous sommes sur la page de chargement Render
-    const pageContent = document.body.innerHTML;
-    const isRenderLoadingPage = 
-        pageContent.includes('Render') || 
-        pageContent.includes('CHARGEMENT') || 
-        pageContent.includes('CHARGEMENT DE L\'APPLICATION') ||
-        pageContent.includes('21:03:45') ||
-        window.location.href.includes('onrender.com') ||
-        document.title.includes('Render');
-    
-    if (isRenderLoadingPage) {
-        console.log('Page de chargement Render détectée - Redirection vers le site principal');
-        
-        // 1. Recharger la page en forçant le cache
-        setTimeout(() => {
-            window.location.reload(true);
-        }, 500);
-        
-        // 2. Rediriger vers la page d'accueil si le rechargement échoue
-        setTimeout(() => {
-            if (document.body.innerHTML.includes('Render')) {
-                window.location.href = window.location.origin;
-            }
-        }, 1500);
-        
-        // 3. Empêcher l'exécution du reste du code
-        throw new Error('Render page detected - preventing execution');
-    }
-}
-
-// =====================================================================
 // FONCTIONS UTILITAIRES POUR CSRF TOKEN
 // =====================================================================
 function getCookie(name) {
@@ -117,14 +83,6 @@ function getCSRFToken() {
 // =====================================================================
 document.addEventListener('DOMContentLoaded', function() {
     console.log('DOM chargé - Initialisation du site');
-    
-    // Vérifier IMMÉDIATEMENT si on est sur la page Render
-    try {
-        checkAndPreventRenderPage();
-    } catch (e) {
-        console.warn(e.message);
-        return; // Arrêter l'exécution si on est sur Render
-    }
     
     // Vérifier si on est sur mobile
     checkMobileView();
@@ -319,9 +277,6 @@ function handleWindowLoad() {
         
         // Optimiser les images après chargement complet
         setTimeout(optimizeTeamImages, 500);
-        
-        // Vérifier une dernière fois si on est sur Render
-        setTimeout(checkAndPreventRenderPage, 100);
     }, 1000);
 }
 
@@ -1288,30 +1243,36 @@ function initForms() {
     initDonationForms();
 }
 
+// CORRECTION CRITIQUE : FORMULAIRE DE CONTACT FONCTIONNEL
 function initContactForm() {
     const contactForm = document.getElementById('contactForm');
-    if (!contactForm) return;
+    if (!contactForm) {
+        console.log('Formulaire de contact non trouvé');
+        return;
+    }
     
-    // S'assurer que le formulaire a un CSRF token
-    if (!document.querySelector('[name=csrfmiddlewaretoken]')) {
-        const csrfInput = document.createElement('input');
-        csrfInput.type = 'hidden';
-        csrfInput.name = 'csrfmiddlewaretoken';
-        csrfInput.value = getCSRFToken();
-        contactForm.appendChild(csrfInput);
+    console.log('Initialisation du formulaire de contact...');
+    
+    // Ajouter un token CSRF s'il n'existe pas
+    if (!contactForm.querySelector('[name=csrfmiddlewaretoken]')) {
+        const csrfToken = getCSRFToken();
+        if (csrfToken) {
+            const csrfInput = document.createElement('input');
+            csrfInput.type = 'hidden';
+            csrfInput.name = 'csrfmiddlewaretoken';
+            csrfInput.value = csrfToken;
+            contactForm.appendChild(csrfInput);
+        }
     }
     
     contactForm.addEventListener('submit', async function(e) {
         e.preventDefault();
-        
-        // Récupérer les données du formulaire
-        const formData = new FormData(contactForm);
-        const csrfToken = getCSRFToken();
+        console.log('Soumission du formulaire détectée');
         
         // Validation
-        const name = formData.get('name')?.trim() || '';
-        const email = formData.get('email')?.trim() || '';
-        const message = formData.get('message')?.trim() || '';
+        const name = contactForm.querySelector('[name="name"]')?.value.trim() || '';
+        const email = contactForm.querySelector('[name="email"]')?.value.trim() || '';
+        const message = contactForm.querySelector('[name="message"]')?.value.trim() || '';
         
         if (!name || !email || !message) {
             showToast('Veuillez remplir tous les champs obligatoires.', 'error');
@@ -1330,7 +1291,13 @@ function initContactForm() {
         submitBtn.disabled = true;
         
         try {
-            // Envoi réel à Django
+            // Préparer les données
+            const formData = new FormData(contactForm);
+            const csrfToken = getCSRFToken();
+            
+            console.log('Envoi à Django avec CSRF token:', csrfToken ? 'Présent' : 'Manquant');
+            
+            // Envoi AJAX à Django
             const response = await fetch('/contact/', {
                 method: 'POST',
                 body: formData,
@@ -1340,36 +1307,27 @@ function initContactForm() {
                 }
             });
             
-            console.log('Réponse reçue:', response.status);
+            console.log('Statut de la réponse:', response.status);
             
             if (response.ok) {
                 const result = await response.json();
                 if (result.success) {
-                    showToast(`Merci ${name}, votre message a bien été enregistré dans la base de données !`, 'success');
+                    showToast(`Merci ${name}, votre message a bien été enregistré !`, 'success');
                     contactForm.reset();
                 } else {
                     showToast(result.message || 'Erreur lors de l\'envoi.', 'error');
                 }
             } else {
-                const errorText = await response.text();
-                console.error('Erreur serveur:', errorText);
-                showToast('Erreur serveur. Code: ' + response.status, 'error');
+                showToast(`Erreur serveur (${response.status}). Veuillez réessayer.`, 'error');
             }
         } catch (error) {
-            console.error('Erreur d\'envoi du formulaire:', error);
-            showToast('Erreur de connexion au serveur. Veuillez réessayer plus tard.', 'error');
+            console.error('Erreur d\'envoi:', error);
+            showToast('Erreur de connexion au serveur.', 'error');
         } finally {
             submitBtn.innerHTML = originalText;
             submitBtn.disabled = false;
         }
     });
-    
-    if (isMobile) {
-        const inputs = contactForm.querySelectorAll('input, textarea, select');
-        inputs.forEach(input => {
-            input.style.fontSize = '16px';
-        });
-    }
 }
 
 function initNewsletterForm() {
@@ -1920,8 +1878,3 @@ window.showDonationModal = showDonationModal;
 window.openGalleryModal = openGalleryModal;
 window.optimizeImpactFormForMobile = optimizeImpactFormForMobile;
 window.optimizeTeamImages = optimizeTeamImages;
-
-// Exécuter une vérification immédiate au chargement de la page
-window.addEventListener('load', function() {
-    setTimeout(checkAndPreventRenderPage, 100);
-});
