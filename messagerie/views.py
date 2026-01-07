@@ -80,7 +80,7 @@ def enregistrer_newsletter(request):
             try:
                 donnees = json.loads(request.body)
             except json.JSONDecodeError:
-                 return JsonResponse({"status": "error", "message": "JSON invalide"}, status=400)
+                return JsonResponse({"status": "error", "message": "JSON invalide"}, status=400)
 
             email = donnees.get('email', '').strip()
             
